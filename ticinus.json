@@ -1,0 +1,362 @@
+{
+  "NumberOfRows": 9,
+  "NumberOfColumns": 12,
+  "Players": [
+    {
+      "Faction": "Rome",
+      "Morale": 3,
+      "MaxHand": 3,
+      "Hand": 0,
+      "MaxAction": 3,
+      "Action": 0
+    },
+    {
+      "Faction": "Carthage",
+      "Morale": 3,
+      "MaxHand": 3,
+      "Hand": 0,
+      "MaxAction": 3,
+      "Action": 0
+    }
+  ],
+  "Tiles": {
+    "(0,0)": "Water",
+    "(0,1)": "Grass",
+    "(0,2)": "Grass",
+    "(0,3)": "Grass",
+    "(0,4)": "Grass",
+    "(0,5)": "Grass",
+    "(0,6)": "Grass",
+    "(0,7)": "Grass",
+    "(0,8)": "Grass",
+    "(0,9)": "Grass",
+    "(0,10)": "Grass",
+    "(0,11)": "Grass",
+    "(1,0)": "Water",
+    "(1,1)": "Grass",
+    "(1,2)": "Grass",
+    "(1,3)": "Grass",
+    "(1,4)": "Grass",
+    "(1,5)": "Grass",
+    "(1,6)": "Grass",
+    "(1,7)": "Grass",
+    "(1,8)": "Grass",
+    "(1,9)": "Grass",
+    "(1,10)": "Grass",
+    "(1,11)": "Grass",
+    "(2,0)": "Water",
+    "(2,1)": "Grass",
+    "(2,2)": "Grass",
+    "(2,3)": "Grass",
+    "(2,4)": "Grass",
+    "(2,5)": "Grass",
+    "(2,6)": "Grass",
+    "(2,7)": "Grass",
+    "(2,8)": "Grass",
+    "(2,9)": "Grass",
+    "(2,10)": "Grass",
+    "(2,11)": "Grass",
+    "(3,0)": "Water",
+    "(3,1)": "Grass",
+    "(3,2)": "Grass",
+    "(3,3)": "Grass",
+    "(3,4)": "Grass",
+    "(3,5)": "Grass",
+    "(3,6)": "Grass",
+    "(3,7)": "Grass",
+    "(3,8)": "Grass",
+    "(3,9)": "Grass",
+    "(3,10)": "Grass",
+    "(3,11)": "Grass",
+    "(4,0)": "Grass",
+    "(4,1)": "Water",
+    "(4,2)": "Grass",
+    "(4,3)": "Grass",
+    "(4,4)": "Grass",
+    "(4,5)": "Grass",
+    "(4,6)": "Grass",
+    "(4,7)": "Grass",
+    "(4,8)": "Grass",
+    "(4,9)": "Grass",
+    "(4,10)": "Grass",
+    "(4,11)": "Grass",
+    "(5,0)": "Water",
+    "(5,1)": "Grass",
+    "(5,2)": "Grass",
+    "(5,3)": "Grass",
+    "(5,4)": "Grass",
+    "(5,5)": "Grass",
+    "(5,6)": "Grass",
+    "(5,7)": "Grass",
+    "(5,8)": "Grass",
+    "(5,9)": "Grass",
+    "(5,10)": "Grass",
+    "(5,11)": "Grass",
+    "(6,0)": "Water",
+    "(6,1)": "Grass",
+    "(6,2)": "Grass",
+    "(6,3)": "Grass",
+    "(6,4)": "Grass",
+    "(6,5)": "Grass",
+    "(6,6)": "Grass",
+    "(6,7)": "Grass",
+    "(6,8)": "Grass",
+    "(6,9)": "Grass",
+    "(6,10)": "Grass",
+    "(6,11)": "Grass",
+    "(7,0)": "Water",
+    "(7,1)": "Grass",
+    "(7,2)": "Grass",
+    "(7,3)": "Grass",
+    "(7,4)": "Grass",
+    "(7,5)": "Grass",
+    "(7,6)": "Grass",
+    "(7,7)": "Grass",
+    "(7,8)": "Grass",
+    "(7,9)": "Grass",
+    "(7,10)": "Grass",
+    "(7,11)": "Grass",
+    "(8,0)": "Water",
+    "(8,1)": "Grass",
+    "(8,2)": "Grass",
+    "(8,3)": "Grass",
+    "(8,4)": "Grass",
+    "(8,5)": "Grass",
+    "(8,6)": "Grass",
+    "(8,7)": "Grass",
+    "(8,8)": "Grass",
+    "(8,9)": "Grass",
+    "(8,10)": "Grass",
+    "(8,11)": "Grass"
+  },
+  "Units": {
+    "(0,4)": {
+      "Faction": "Carthage",
+      "Unit": "Numidians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(0,7)": {
+      "Faction": "Carthage",
+      "Unit": "Numidians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(1,5)": {
+      "Faction": "Carthage",
+      "Unit": "Leader",
+      "State": "Idle",
+      "Health": "3"
+    },
+    "(1,6)": {
+      "Faction": "Carthage",
+      "Unit": "Numidians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(1,4)": {
+      "Faction": "Carthage",
+      "Unit": "Numidians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,7)": {
+      "Faction": "Rome",
+      "Unit": "Velites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,3)": {
+      "Faction": "Rome",
+      "Unit": "Velites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,4)": {
+      "Faction": "Rome",
+      "Unit": "Equites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,5)": {
+      "Faction": "Rome",
+      "Unit": "Velites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,6)": {
+      "Faction": "Rome",
+      "Unit": "Equites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(8,5)": {
+      "Faction": "Rome",
+      "Unit": "Leader",
+      "State": "Idle",
+      "Health": "3"
+    }
+  },
+  "Cards": [
+    {
+      "Faction": "Rome",
+      "Card": "MixedOrder",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryCharge",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "MixedOrder",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Skirmish",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Skirmish",
+      "State": "InDeck"
+    },
+        {
+      "Faction": "Carthage",
+      "Card": "MixedOrder",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCharge",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCharge",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "HitAndRun",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "HitAndRun",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "MixedOrder",
+      "State": "InDeck"
+    }
+  ],
+  "CurrentPlayer": "Carthage",
+  "EndRound": 6,
+  "CurrentGameRound": 1,
+  "CurrentGamePhase": "Select",
+  "CurrentTurnPhase": "Move"
+}

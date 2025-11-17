@@ -1,0 +1,253 @@
+{
+  "NumberOfRows": 9,
+  "NumberOfColumns": 12,
+  "Players": [
+    {
+      "Faction": "Rome",
+      "Morale": 2,
+      "MaxHand": 3,
+      "Hand": 0,
+      "MaxAction": 3,
+      "Action": 2
+    },
+    {
+      "Faction": "Carthage",
+      "Morale": 4,
+      "MaxHand": 3,
+      "Hand": 0,
+      "MaxAction": 3,
+      "Action": 1
+    }
+  ],
+  "Tiles": {
+    "(0,0)": "Water",
+    "(1,0)": "Water",
+    "(2,0)": "Water",
+    "(3,0)": "Water",
+    "(4,1)": "Water",
+    "(5,0)": "Water",
+    "(6,0)": "Water",
+    "(7,0)": "Water",
+    "(8,0)": "Water"
+  },
+  "Units": {
+    "(0,4)": {
+      "Faction": "Carthage",
+      "Unit": "Numidians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(0,7)": {
+      "Faction": "Carthage",
+      "Unit": "Numidians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(1,4)": {
+      "Faction": "Carthage",
+      "Unit": "Phoenicians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(1,6)": {
+      "Faction": "Carthage",
+      "Unit": "Phoenicians",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(1,5)": {
+      "Faction": "Carthage",
+      "Unit": "Leader",
+      "State": "Idle",
+      "Health": "3"
+    },
+    "(7,4)": {
+      "Faction": "Rome",
+      "Unit": "Equites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,6)": {
+      "Faction": "Rome",
+      "Unit": "Equites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,3)": {
+      "Faction": "Rome",
+      "Unit": "Velites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,5)": {
+      "Faction": "Rome",
+      "Unit": "Velites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(7,7)": {
+      "Faction": "Rome",
+      "Unit": "Velites",
+      "State": "Idle",
+      "Health": "2"
+    },
+    "(8,5)": {
+      "Faction": "Rome",
+      "Unit": "Leader",
+      "State": "None",
+      "Health": "3"
+    }
+  },
+  "Cards": [
+    {
+      "Faction": "Rome",
+      "Card": "CavalryCharge",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Envelopment",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Skirmish",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Skirmish",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCharge",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCharge",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "Flanking",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryCounter",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "CavalryPursue",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "HitAndRun",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Carthage",
+      "Card": "HitAndRun",
+      "State": "InDeck"
+    },
+    {
+      "Faction": "Rome",
+      "Card": "Envelopment",
+      "State": "InDeck"
+    }
+  ],
+  "FirstPlayer": "Carthage",
+  "EndRound": 6,
+  "CurrentGameRound": 3,
+  "CurrentGamePhase": "Turn",
+  "CurrentTurnPhase": "Move"
+}
