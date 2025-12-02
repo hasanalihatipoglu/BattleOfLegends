@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Audio;
 using BoLLogic;
 using System.IO;
 
@@ -20,6 +21,7 @@ public class Game1 : Game
     private Dictionary<string, Texture2D> _cardTextures;
     private Texture2D _backgroundTexture;
     private Texture2D _cardBackTexture;
+    private Dictionary<string, SoundEffect> _soundEffects;
 
     // Cached card lists to avoid LINQ allocations every frame
     private List<Card> _romeCardsCache;
@@ -97,6 +99,9 @@ public class Game1 : Game
 
         // Subscribe to message events
         MessageController.Instance.Message += OnMessage;
+
+        // Subscribe to sound events
+        SoundController.Instance.Play += OnPlaySound;
 
         // Initialize game state
         _gameState = new GameState(_board);
@@ -217,6 +222,23 @@ public class Game1 : Game
         {
             System.Diagnostics.Debug.WriteLine($"Error loading textures: {ex.Message}");
         }
+
+        // Load sound effects (outside try-catch to see any errors clearly)
+        try
+        {
+            _soundEffects = new Dictionary<string, SoundEffect>();
+            _soundEffects["click_button"] = Content.Load<SoundEffect>("click_button");
+            _soundEffects["flip_card"] = Content.Load<SoundEffect>("flip_card");
+            _soundEffects["shake_dice"] = Content.Load<SoundEffect>("shake_dice");
+            _soundEffects["break_glass"] = Content.Load<SoundEffect>("break_glass");
+            System.Diagnostics.Debug.WriteLine("Sound effects loaded successfully");
+        }
+        catch (Exception soundEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error loading sound effects: {soundEx.Message}");
+            System.Diagnostics.Debug.WriteLine($"Stack trace: {soundEx.StackTrace}");
+            _soundEffects = new Dictionary<string, SoundEffect>(); // Initialize empty to prevent null reference
+        }
     }
 
     protected override void Update(GameTime gameTime)
@@ -284,10 +306,13 @@ public class Game1 : Game
         // Handle left click
         if (mouseState.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
         {
+            System.Diagnostics.Debug.WriteLine($"Left click detected at ({mouseState.X}, {mouseState.Y})");
+
             // Check if clicking on Roll button first (screen space)
             if (HandleRollButtonClick(mouseState.X, mouseState.Y))
             {
                 // Roll button was clicked, don't process other clicks
+                System.Diagnostics.Debug.WriteLine("Roll button handled the click");
             }
             // Check if clicking on current player tracker (screen space)
             else if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
@@ -493,6 +518,8 @@ public class Game1 : Game
 
     private bool HandleCurrentPlayerTrackerClick(int mouseX, int mouseY)
     {
+        System.Diagnostics.Debug.WriteLine($"HandleCurrentPlayerTrackerClick called with mouse position: ({mouseX}, {mouseY})");
+
         // Get all turn phases to calculate where TurnPhase tracker ends
         var turnPhases = System.Enum.GetValues(typeof(TurnPhase)).Cast<TurnPhase>().Where(p => p != TurnPhase.None).ToArray();
         var gamePhases = System.Enum.GetValues(typeof(GamePhase)).Cast<GamePhase>().ToArray();
@@ -500,7 +527,7 @@ public class Game1 : Game
         // Calculate vertical position (left side, below TurnPhase tracker)
         float gamePhaseHeight = 20 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float turnPhaseHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (turnPhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
-        float startY = gamePhaseHeight + turnPhaseHeight;
+        float startY = gamePhaseHeight + 50;
 
         // Check Rome button
         Rectangle romeButton = new Rectangle(
@@ -509,9 +536,13 @@ public class Game1 : Game
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
+        System.Diagnostics.Debug.WriteLine($"Rome button bounds: {romeButton}");
+
         if (romeButton.Contains(mouseX, mouseY))
         {
-            TurnManager.Instance.CurrentPlayer = PlayerType.Rome;
+            System.Diagnostics.Debug.WriteLine($"Rome button clicked. Current player: {TurnManager.Instance.CurrentPlayer}");
+            TurnManager.Instance.SetCurrentPlayer(PlayerType.Rome);
+            System.Diagnostics.Debug.WriteLine($"After SetCurrentPlayer. Current player: {TurnManager.Instance.CurrentPlayer}");
             return true;
         }
 
@@ -522,9 +553,13 @@ public class Game1 : Game
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
+        System.Diagnostics.Debug.WriteLine($"Carthage button bounds: {carthageButton}");
+
         if (carthageButton.Contains(mouseX, mouseY))
         {
-            TurnManager.Instance.CurrentPlayer = PlayerType.Carthage;
+            System.Diagnostics.Debug.WriteLine($"Carthage button clicked. Current player: {TurnManager.Instance.CurrentPlayer}");
+            TurnManager.Instance.SetCurrentPlayer(PlayerType.Carthage);
+            System.Diagnostics.Debug.WriteLine($"After SetCurrentPlayer. Current player: {TurnManager.Instance.CurrentPlayer}");
             return true;
         }
 
@@ -564,6 +599,30 @@ public class Game1 : Game
         System.Windows.Forms.MessageBox.Show(e.Message, "Battle of Legends",
             System.Windows.Forms.MessageBoxButtons.OK,
             System.Windows.Forms.MessageBoxIcon.Information);
+    }
+
+    private void OnPlaySound(object sender, SoundEventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"OnPlaySound called for: {e.Sound}");
+
+        // Play the requested sound effect
+        if (_soundEffects != null && _soundEffects.ContainsKey(e.Sound))
+        {
+            try
+            {
+                _soundEffects[e.Sound].Play();
+                System.Diagnostics.Debug.WriteLine($"Successfully played: {e.Sound}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error playing sound {e.Sound}: {ex.Message}");
+            }
+        }
+        else
+        {
+            var availableSounds = _soundEffects != null ? string.Join(", ", _soundEffects.Keys) : "none";
+            System.Diagnostics.Debug.WriteLine($"Sound not found: {e.Sound}. Available sounds: {availableSounds}");
+        }
     }
 
     private bool HandleCardClick(int mouseX, int mouseY)
@@ -967,19 +1026,23 @@ public class Game1 : Game
 
             if (_font != null)
             {
-                // Use SpriteFont
-                float scale = 0.5f; // Adjust scale to fit card width
-                Vector2 textSize = _font.MeasureString(cardText) * scale;
-
-                // Truncate if too long
+                // Use SpriteFont with dynamic scaling to fit text
                 string displayText = cardText;
-                if (textSize.X > CARD_WIDTH - 10)
+                float maxWidth = CARD_WIDTH - 10;
+                float scale = 0.35f; // Adjusted for larger font size (16pt)
+
+                // Measure at current scale
+                Vector2 textSize = _font.MeasureString(displayText) * scale;
+
+                // If text is too wide, reduce scale to make it fit
+                if (textSize.X > maxWidth)
                 {
-                    while (displayText.Length > 0 && _font.MeasureString(displayText).X * scale > CARD_WIDTH - 15)
+                    scale = maxWidth / _font.MeasureString(displayText).X;
+                    // Don't go too small
+                    if (scale < 0.25f)
                     {
-                        displayText = displayText.Substring(0, displayText.Length - 1);
+                        scale = 0.25f;
                     }
-                    displayText += "..";
                 }
 
                 _spriteBatch.DrawString(_font, displayText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
@@ -1234,8 +1297,8 @@ public class Game1 : Game
 
         // Calculate vertical position (left side, below TurnPhase tracker)
         float gamePhaseHeight = 20 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
-        float turnPhaseHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (turnPhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
-        float startY = gamePhaseHeight + turnPhaseHeight;
+        float gapUI = 50;
+        float startY = gamePhaseHeight + gapUI;
         float totalHeight = 2 * PHASE_BOX_HEIGHT + PHASE_SPACING + 20;
 
         // Draw background panel
@@ -1268,7 +1331,7 @@ public class Game1 : Game
         // Draw Rome text
         if (_font != null)
         {
-            float scale = 0.5f;
+            float scale = 0.35f; // Adjusted for larger font size (16pt)
             Vector2 textSize = _font.MeasureString("ROME") * scale;
             Vector2 textPosition = new Vector2(
                 romeButton.X + (PHASE_BOX_WIDTH - textSize.X) / 2,
@@ -1295,12 +1358,23 @@ public class Game1 : Game
         // Draw Carthage text
         if (_font != null)
         {
-            float scale = 0.45f;
-            Vector2 textSize = _font.MeasureString("CARTHAGE") * scale;
+            string carthageText = "CARTHAGE";
+            float maxWidth = PHASE_BOX_WIDTH - 10;
+            float scale = 0.35f; // Adjusted for larger font size (16pt)
+
+            // Measure and adjust scale to fit
+            Vector2 textSize = _font.MeasureString(carthageText) * scale;
+            if (textSize.X > maxWidth)
+            {
+                scale = maxWidth / _font.MeasureString(carthageText).X;
+            }
+
+            // Recalculate size with final scale
+            textSize = _font.MeasureString(carthageText) * scale;
             Vector2 textPosition = new Vector2(
                 carthageButton.X + (PHASE_BOX_WIDTH - textSize.X) / 2,
                 carthageButton.Y + (PHASE_BOX_HEIGHT - textSize.Y) / 2);
-            _spriteBatch.DrawString(_font, "CARTHAGE", textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_font, carthageText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
         else
         {
@@ -1473,6 +1547,7 @@ public class Game1 : Game
         {
             // Unsubscribe from event handlers to prevent memory leaks
             MessageController.Instance.Message -= OnMessage;
+            SoundController.Instance.Play -= OnPlaySound;
         }
 
         base.Dispose(disposing);

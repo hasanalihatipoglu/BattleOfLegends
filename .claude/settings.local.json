@@ -17,7 +17,8 @@
       "Bash(NUL)",
       "Bash(where /r . nul 2)",
       "Bash($null)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

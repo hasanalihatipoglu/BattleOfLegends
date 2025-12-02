@@ -106,6 +106,21 @@ public sealed class TurnManager
         ChangePlayer?.Invoke(this, EventArgs.Empty);
     }
 
+    public void SetCurrentPlayer(PlayerType player)
+    {
+        System.Diagnostics.Debug.WriteLine($"SetCurrentPlayer called: trying to set to {player}, current is {CurrentPlayer}");
+        if (CurrentPlayer != player)
+        {
+            CurrentPlayer = player;
+            System.Diagnostics.Debug.WriteLine($"Player changed to {CurrentPlayer}, raising ChangePlayer event");
+            ChangePlayer?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"Player is already {player}, not changing");
+        }
+    }
+
 
     public void ChangeCurrentGamePhase()
     {
