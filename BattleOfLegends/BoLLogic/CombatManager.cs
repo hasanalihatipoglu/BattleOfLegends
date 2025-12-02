@@ -13,19 +13,13 @@ public enum CombatType
 public sealed class CombatManager
 {
 
-    private static CombatManager instance = null;
+    private static readonly Lazy<CombatManager> instance = new Lazy<CombatManager>(() => new CombatManager());
 
-    public static CombatManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new CombatManager();
-            }
-            return instance;
-        }
-    }
+    public static CombatManager Instance => instance.Value;
+
+    // Combat constants
+    private const int DICE_MIN = 1;
+    private const int DICE_MAX = 6;
 
     public AttackType Type { get; set; }
     public Unit Attacker { get; set; }
@@ -57,8 +51,20 @@ public sealed class CombatManager
 
         Type = type;
         AttackPath = attackPath;
+        if (AttackPath?.TilesInPath == null || AttackPath.TilesInPath.Count == 0)
+        {
+            MessageController.Instance.Show("Invalid attack path!");
+            return false;
+        }
+
         Attacker = AttackPath.TilesInPath.First().Unit;
         Target = AttackPath.TilesInPath.Last().Unit;
+
+        if (Attacker == null || Target == null)
+        {
+            MessageController.Instance.Show("Invalid attacker or target!");
+            return false;
+        }
 
         if (CheckCombat(type) == false)
             return false;
@@ -107,9 +113,21 @@ public sealed class CombatManager
 
         if (type == AttackType.Normal)
         {
+            if (OriginalAttackPath?.TilesInPath == null || OriginalAttackPath.TilesInPath.Count == 0)
+            {
+                MessageController.Instance.Show("Invalid combat state!");
+                return;
+            }
+
             AttackPath = OriginalAttackPath;
             Attacker = AttackPath.TilesInPath.First().Unit;
             Target = AttackPath.TilesInPath.Last().Unit;
+
+            if (Attacker == null || Target == null)
+            {
+                MessageController.Instance.Show("Attacker or target is missing!");
+                return;
+            }
         }
 
 
@@ -383,7 +401,6 @@ public sealed class CombatManager
     {
         Attacker = null;
         Target = null;
-        //  AttackPath = null;
 
         if (type == AttackType.Normal)
         {
@@ -400,7 +417,7 @@ public sealed class CombatManager
 
     int RollDie()
     {
-        dieResult = roller.Next(0, 6) + 1;
+        dieResult = roller.Next(DICE_MIN, DICE_MAX + 1);
         return dieResult;
     }
 

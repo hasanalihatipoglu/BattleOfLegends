@@ -21,19 +21,9 @@ public enum TurnPhase
 public sealed class TurnManager
 {
 
-    private static TurnManager instance = null;
+    private static readonly Lazy<TurnManager> instance = new Lazy<TurnManager>(() => new TurnManager());
 
-    public static TurnManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new TurnManager();
-            }
-            return instance;
-        }
-    }
+    public static TurnManager Instance => instance.Value;
 
 
     public Unit SelectedUnit { get; set; } 
@@ -55,12 +45,19 @@ public sealed class TurnManager
 
     public void AdvanceTurnPhase(int i)
     {
-        CurrentTurnPhase = CurrentTurnPhase + i;
+        int currentPhaseValue = (int)CurrentTurnPhase;
+        int totalPhases = System.Enum.GetValues(typeof(TurnPhase)).Length;
 
-        if ((int)CurrentTurnPhase >= System.Enum.GetValues(typeof(TurnPhase)).Length)
+        // Advance phase safely with wrap-around
+        currentPhaseValue = (currentPhaseValue + i) % totalPhases;
+
+        // Ensure non-negative value
+        if (currentPhaseValue < 0)
         {
-            CurrentTurnPhase = 0;
+            currentPhaseValue += totalPhases;
         }
+
+        CurrentTurnPhase = (TurnPhase)currentPhaseValue;
 
         switch (CurrentTurnPhase)
         {

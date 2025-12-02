@@ -4,19 +4,9 @@ namespace BoLLogic;
 public sealed class PathFinder
 {
 
-    private static PathFinder instance = null;
+    private static readonly Lazy<PathFinder> instance = new Lazy<PathFinder>(() => new PathFinder());
 
-    public static PathFinder Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new PathFinder();
-            }
-            return instance;
-        }
-    }
+    public static PathFinder Instance => instance.Value;
 
 
     public Frontier CurrentFrontier { get; set; } = new();
@@ -329,7 +319,15 @@ public sealed class PathFinder
             case PathType.Retreat:
                 if (CurrentFrontier.Tiles.Count > 0)
                 {
-                    Tile maxCostTile = CurrentFrontier.Tiles.OrderByDescending(t => t.Cost).First();
+                    // Find max cost tile efficiently without sorting - O(n) instead of O(n log n)
+                    Tile maxCostTile = CurrentFrontier.Tiles[0];
+                    foreach (var tile in CurrentFrontier.Tiles)
+                    {
+                        if (tile.Cost > maxCostTile.Cost)
+                        {
+                            maxCostTile = tile;
+                        }
+                    }
                     int numberOfUnresolvedRetreatSpaces = CombatManager.Instance.NumberOfRetreatSpaces - maxCostTile.Cost;
 
                     var adjacents = FindAdjacents(maxCostTile, PathType.Retreat);
@@ -518,9 +516,21 @@ public sealed class PathFinder
         List<Tile> tiles = [];
         Tile current = destination;
 
-        while (current != origin)
+        HashSet<Tile> visitedTiles = new HashSet<Tile>();
+        int maxIterations = 1000; // Safety limit
+        int iterations = 0;
+
+        while (current != origin && iterations < maxIterations)
         {
+            if (visitedTiles.Contains(current))
+            {
+                // Circular reference detected, break to prevent infinite loop
+                break;
+            }
+
             tiles.Add(current);
+            visitedTiles.Add(current);
+            iterations++;
 
             if (type == PathType.Move || type == PathType.Retreat)
             {

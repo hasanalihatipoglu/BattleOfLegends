@@ -51,7 +51,7 @@ public class Board
         {
             if (!Enum.TryParse(player.Faction, out PlayerType playerType))
             {
-                Console.WriteLine($"Invalid faction: {player.Faction}");
+                System.Diagnostics.Debug.WriteLine($"Invalid faction: {player.Faction}");
                 continue;
             }
 
@@ -76,7 +76,7 @@ public class Board
         }
         else
         {
-            Console.WriteLine($"Invalid first player faction: {GameManager.Instance.CurrentPlayer}");
+            System.Diagnostics.Debug.WriteLine($"Invalid first player faction: {GameManager.Instance.CurrentPlayer}");
         }
     }
 
@@ -108,7 +108,7 @@ public class Board
                 Type type = Type.GetType(fullTypeName);
                 if (type == null)
                 {
-                    Console.WriteLine($"Tile class not found: {fullTypeName}, defaulting to Grass");
+                    System.Diagnostics.Debug.WriteLine($"Tile class not found: {fullTypeName}, defaulting to Grass");
                     type = typeof(Grass);
                 }
 
@@ -122,12 +122,12 @@ public class Board
                     }
                     else
                     {
-                        Console.WriteLine($"Could not instantiate tile: {tileTypeName}");
+                        System.Diagnostics.Debug.WriteLine($"Could not instantiate tile: {tileTypeName}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error creating tile '{tileTypeName}': {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error creating tile '{tileTypeName}': {ex.Message}");
                 }
             }
         }
@@ -192,19 +192,19 @@ public class Board
 
                 if (!Enum.TryParse(faction, out PlayerType playerType))
                 {
-                    Console.WriteLine($"Invalid faction: {faction}");
+                    System.Diagnostics.Debug.WriteLine($"Invalid faction: {faction}");
                     continue;
                 }
 
                 if (!Enum.TryParse(unitState, out UnitState state))
                 {
-                    Console.WriteLine($"Invalid unit state: {unitState}");
+                    System.Diagnostics.Debug.WriteLine($"Invalid unit state: {unitState}");
                     continue;
                 }
 
                 if (!Int32.TryParse(unitHealth, out int health))
                 {
-                    Console.WriteLine($"Invalid unit health: {unitHealth}");
+                    System.Diagnostics.Debug.WriteLine($"Invalid unit health: {unitHealth}");
                     continue;
                 }
 
@@ -213,7 +213,7 @@ public class Board
                 Type type = Type.GetType(fullTypeName);
                 if (type == null)
                 {
-                    Console.WriteLine($"Unit class not found: {fullTypeName}");
+                    System.Diagnostics.Debug.WriteLine($"Unit class not found: {fullTypeName}");
                     continue;
                 }
 
@@ -230,12 +230,12 @@ public class Board
                     }
                     else
                     {
-                        Console.WriteLine($"Failed to create unit: {unitTypeName}");
+                        System.Diagnostics.Debug.WriteLine($"Failed to create unit: {unitTypeName}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error creating unit '{unitTypeName}': {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"Error creating unit '{unitTypeName}': {ex.Message}");
                 }
             }
         }
@@ -248,13 +248,13 @@ public class Board
         {
             if (!Enum.TryParse(faction, out PlayerType playerType))
             {
-                Console.WriteLine($"Invalid faction: {faction}");
+                System.Diagnostics.Debug.WriteLine($"Invalid faction: {faction}");
                 continue;
             }
 
             if (!Enum.TryParse(cardState, out CardState state))
             {
-                Console.WriteLine($"Invalid faction: {cardState}");
+                System.Diagnostics.Debug.WriteLine($"Invalid faction: {cardState}");
                 continue;
             }
 
@@ -264,7 +264,7 @@ public class Board
             Type type = Type.GetType(fullTypeName);
             if (type == null)
             {
-                Console.WriteLine($"Card class not found: {fullTypeName}");
+                System.Diagnostics.Debug.WriteLine($"Card class not found: {fullTypeName}");
                 continue;
             }
 
@@ -279,11 +279,11 @@ public class Board
                 }
 
                 else
-                    Console.WriteLine($"Failed to create card: {cardName}");
+                    System.Diagnostics.Debug.WriteLine($"Failed to create card: {cardName}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error creating card '{cardName}': {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error creating card '{cardName}': {ex.Message}");
             }
         }
     }
@@ -306,7 +306,7 @@ public class Board
         }
         else
         {
-            Console.WriteLine($"Invalid game phase: {GameManager.Instance.CurrentGamePhase}");
+            System.Diagnostics.Debug.WriteLine($"Invalid game phase: {GameManager.Instance.CurrentGamePhase}");
         }
 
         if (Enum.TryParse(GameManager.Instance.CurrentTurnPhase, out TurnPhase tphase))
@@ -316,7 +316,7 @@ public class Board
         }
         else
         {
-            Console.WriteLine($"Invalid turn phase: {GameManager.Instance.CurrentTurnPhase}");
+            System.Diagnostics.Debug.WriteLine($"Invalid turn phase: {GameManager.Instance.CurrentTurnPhase}");
         }
     }
 
@@ -371,7 +371,7 @@ public class Board
 
     public bool IsOccupied(Tile tile)
     {
-        return tile.Occupied;
+        return tile != null && tile.Occupied;
     }
 
     public static bool IsTarget(Unit unit, Unit target)

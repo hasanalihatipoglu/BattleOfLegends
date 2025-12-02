@@ -21,6 +21,14 @@ public class Game1 : Game
     private Texture2D _backgroundTexture;
     private Texture2D _cardBackTexture;
 
+    // Cached card lists to avoid LINQ allocations every frame
+    private List<Card> _romeCardsCache;
+    private List<Card> _carthageCardsCache;
+    private bool _cardCacheDirty = true;
+
+    // Animation time tracking
+    private double _totalElapsedSeconds = 0;
+
     // Game constants
     private const int BOARD_ROWS = 9;
     private const int BOARD_COLS = 13;
@@ -93,10 +101,33 @@ public class Game1 : Game
         // Initialize game state
         _gameState = new GameState(_board);
 
+        // Initialize card cache
+        UpdateCardCache();
+
         // Center camera on the board
         CenterCameraOnBoard();
 
         base.Initialize();
+    }
+
+    private void UpdateCardCache()
+    {
+        if (_board?.Cards == null)
+        {
+            _romeCardsCache = new List<Card>();
+            _carthageCardsCache = new List<Card>();
+            return;
+        }
+
+        _romeCardsCache = _board.Cards.Where(c => c.Faction == PlayerType.Rome &&
+                                                   (c.State == CardState.InDeck ||
+                                                    c.State == CardState.InHand ||
+                                                    c.State == CardState.ReadyToPlay)).ToList();
+        _carthageCardsCache = _board.Cards.Where(c => c.Faction == PlayerType.Carthage &&
+                                                       (c.State == CardState.InDeck ||
+                                                        c.State == CardState.InHand ||
+                                                        c.State == CardState.ReadyToPlay)).ToList();
+        _cardCacheDirty = false;
     }
 
     private void CenterCameraOnBoard()
@@ -192,6 +223,12 @@ public class Game1 : Game
     {
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
+
+        // Update card cache if needed (card states may have changed)
+        if (_cardCacheDirty)
+        {
+            UpdateCardCache();
+        }
 
         // Handle mouse input
         MouseState mouseState = Mouse.GetState();
@@ -533,22 +570,19 @@ public class Game1 : Game
     {
         if (_board?.Cards == null) return false;
 
-        // Check Rome's cards at bottom
-        var romeCards = _board.Cards.Where(c => c.Faction == PlayerType.Rome &&
-                                                 (c.State == CardState.InDeck ||
-                                                  c.State == CardState.InHand ||
-                                                  c.State == CardState.ReadyToPlay)).ToList();
+        // Use cached card lists instead of LINQ queries
         float romeY = _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y;
-        if (CheckCardHandClick(romeCards, mouseX, mouseY, romeY))
+        if (CheckCardHandClick(_romeCardsCache, mouseX, mouseY, romeY))
+        {
+            _cardCacheDirty = true; // Mark cache as dirty after card interaction
             return true;
+        }
 
-        // Check Carthage's cards at top
-        var carthageCards = _board.Cards.Where(c => c.Faction == PlayerType.Carthage &&
-                                                     (c.State == CardState.InDeck ||
-                                                      c.State == CardState.InHand ||
-                                                      c.State == CardState.ReadyToPlay)).ToList();
-        if (CheckCardHandClick(carthageCards, mouseX, mouseY, CARD_HAND_Y))
+        if (CheckCardHandClick(_carthageCardsCache, mouseX, mouseY, CARD_HAND_Y))
+        {
+            _cardCacheDirty = true; // Mark cache as dirty after card interaction
             return true;
+        }
 
         return false;
     }
@@ -584,6 +618,9 @@ public class Game1 : Game
 
     protected override void Draw(GameTime gameTime)
     {
+        // Update elapsed time for animations
+        _totalElapsedSeconds += gameTime.ElapsedGameTime.TotalSeconds;
+
         GraphicsDevice.Clear(Color.CornflowerBlue);
 
         // Create transformation matrix for camera
@@ -763,7 +800,7 @@ public class Game1 : Game
         DrawGamePhaseTracker();
         DrawPhaseTracker();
         DrawCurrentPlayerTracker();
-        DrawRollButton();
+        DrawRollButton(_totalElapsedSeconds);
         DrawCards();
         _spriteBatch.End();
 
@@ -830,21 +867,9 @@ public class Game1 : Game
     {
         if (_board?.Cards == null) return;
 
-        // Separate cards by faction (show InDeck, InHand, and ReadyToPlay)
-        var romeCards = _board.Cards.Where(c => c.Faction == PlayerType.Rome &&
-                                                 (c.State == CardState.InDeck ||
-                                                  c.State == CardState.InHand ||
-                                                  c.State == CardState.ReadyToPlay)).ToList();
-        var carthageCards = _board.Cards.Where(c => c.Faction == PlayerType.Carthage &&
-                                                     (c.State == CardState.InDeck ||
-                                                      c.State == CardState.InHand ||
-                                                      c.State == CardState.ReadyToPlay)).ToList();
-
-        // Draw Rome's cards at bottom
-        DrawCardHand(romeCards, _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y, PlayerType.Rome);
-
-        // Draw Carthage's cards at top
-        DrawCardHand(carthageCards, CARD_HAND_Y, PlayerType.Carthage);
+        // Use cached card lists instead of LINQ queries every frame
+        DrawCardHand(_romeCardsCache, _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y, PlayerType.Rome);
+        DrawCardHand(_carthageCardsCache, CARD_HAND_Y, PlayerType.Carthage);
     }
 
     private void DrawCardHand(List<Card> cards, float yPosition, PlayerType faction)
@@ -1283,7 +1308,7 @@ public class Game1 : Game
         }
     }
 
-    private void DrawRollButton()
+    private void DrawRollButton(double totalElapsedSeconds)
     {
         var combatManager = CombatManager.Instance;
 
@@ -1301,8 +1326,8 @@ public class Game1 : Game
             (int)ROLL_BUTTON_WIDTH,
             (int)ROLL_BUTTON_HEIGHT);
 
-        // Draw button background with pulsing effect
-        float pulse = (float)Math.Sin(DateTime.Now.Millisecond / 200.0) * 0.2f + 0.8f;
+        // Draw button background with pulsing effect using GameTime for deterministic animation
+        float pulse = (float)Math.Sin(totalElapsedSeconds * Math.PI) * 0.2f + 0.8f;
         Color buttonColor = new Color((int)(200 * pulse), (int)(50 * pulse), (int)(50 * pulse));
         _spriteBatch.Draw(_pixelTexture, rollButton, buttonColor);
 
@@ -1440,5 +1465,16 @@ public class Game1 : Game
             '.' => new bool[,] { {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,true,false,false}, {false,false,true,false,false} },
             _ => new bool[,] { {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false} }
         };
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Unsubscribe from event handlers to prevent memory leaks
+            MessageController.Instance.Message -= OnMessage;
+        }
+
+        base.Dispose(disposing);
     }
 }

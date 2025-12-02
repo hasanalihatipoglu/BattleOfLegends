@@ -23,8 +23,8 @@ public abstract class Unit
     public Tile Tile { get; set; }
 
     public HealthSystem Health { get; set; }
-    public UnitState State { get; set; } //= UnitState.Idle;
-    public UnitState PreviousState { get; set; } //= UnitState.Idle;
+    public UnitState State { get; set; }
+    public UnitState PreviousState { get; set; }
 
 
 
@@ -42,6 +42,11 @@ public abstract class Unit
         else
         {
             //SELECTED UNIT
+            if (TurnManager.Instance.SelectedUnit == null)
+            {
+                return;
+            }
+
             switch (TurnManager.Instance.SelectedUnit.State)
             {
                 case UnitState.Idle:
@@ -82,12 +87,10 @@ public abstract class Unit
 
             switch (TurnManager.Instance.SelectedUnit.State)
             {
-                case UnitState.None:                   
-                  //  TurnManager.Instance.SelectedUnit.State = UnitState.Idle;                    
+                case UnitState.None:
                     break;
 
                 case UnitState.Idle:
-                 //   TurnManager.Instance.SelectedUnit.State = UnitState.None;                   
                     break;
             }
         }

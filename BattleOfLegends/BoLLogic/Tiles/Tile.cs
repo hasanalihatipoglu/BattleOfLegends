@@ -106,7 +106,6 @@ public abstract class Tile
                             TurnManager.Instance.SelectedUnit.State = UnitState.Marched;
                             TurnManager.Instance.SelectedUnit = null;
                             PathFinder.Instance.ResetAll();
-                          //  e.GameState.ChangeTurn();
                         }
 
                         else
@@ -119,7 +118,6 @@ public abstract class Tile
                             if (PathFinder.Instance.CurrentTargets.Count == 0)
                             {
                                 TurnManager.Instance.SelectedUnit = null;
-                             //   e.GameState.ChangeTurn();
                             }
                         }
                     }
@@ -138,9 +136,7 @@ public abstract class Tile
                     if (PathFinder.Instance.CurrentSpaces.ContainsKey(this))
                     {
                         TurnManager.Instance.MakeMove(new NormalMove(PathFinder.Instance.CurrentSpaces[this]));
-                        //TurnManager.Instance.SelectedUnit.State = UnitState.Retreated;
-                        // ChangeUnitState?.Invoke(this, new StateChangedEventArgs(TurnManager.Instance.SelectedUnit, UnitState.Retreated));
-                        CombatManager.Instance.CancelCombat();
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Retreated;
                         CombatManager.Instance.CheckAdvance();
                         TurnManager.Instance.SelectedUnit = null;
                         PathFinder.Instance.Reset(PathType.Move);
@@ -151,7 +147,6 @@ public abstract class Tile
                     if (PathFinder.Instance.CurrentSpaces.ContainsKey(this))
                     {
                         TurnManager.Instance.MakeMove(new NormalMove(PathFinder.Instance.CurrentSpaces[this]));
-                        //TurnManager.Instance.SelectedUnit.State = UnitState.Advanced;
                         ChangeUnitState?.Invoke(this, new StateChangedEventArgs(TurnManager.Instance.SelectedUnit, UnitState.Advanced));
                         TurnManager.Instance.SelectedUnit = null;
                         PathFinder.Instance.Reset(PathType.Move);
@@ -160,23 +155,16 @@ public abstract class Tile
 
             }
         }
-
-     //   Click?.Invoke(this, e);
     }
 
 
 
 
-    //-------------------------------------RIGHT CLICK---------------------------------------------------------
     public void OnRightClick(Board board)
     {
-      //  MessageController.Instance.Show("Right Click");
     }
 
-
-    //-------------------------------------MIDDLE CLICK---------------------------------------------------------
     public void OnMiddleClick(Board board)
     {
-       // MessageController.Instance.Show("Middle Click");
     }
 }

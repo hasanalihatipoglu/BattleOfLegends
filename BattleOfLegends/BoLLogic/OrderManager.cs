@@ -18,19 +18,9 @@ public enum OrderType
 public sealed class OrderManager
 {
 
-    private static OrderManager instance = null;
+    private static readonly Lazy<OrderManager> instance = new Lazy<OrderManager>(() => new OrderManager());
 
-    public static OrderManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new OrderManager();
-            }
-            return instance;
-        }
-    }
+    public static OrderManager Instance => instance.Value;
 
     public OrderType Type { get; set; }
     public PlayerType Faction { get; set; }

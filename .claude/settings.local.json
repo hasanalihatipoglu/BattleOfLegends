@@ -16,7 +16,8 @@
       "Bash(git add:*)",
       "Bash(NUL)",
       "Bash(where /r . nul 2)",
-      "Bash($null)"
+      "Bash($null)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

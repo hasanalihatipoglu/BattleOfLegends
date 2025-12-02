@@ -27,7 +27,7 @@ public readonly struct Position(int row, int column)
         bool isEvenRow = (to.Row % 2 == 0);
 
 
-        if (!isEvenRow)
+        if (isEvenRow)
         {
             if (rowDiff == 0 && colDiff == 1) return Direction.EvenRowRight;
             if (rowDiff == 1 && colDiff == 1) return Direction.EvenRowLowerRight;
@@ -42,7 +42,7 @@ public readonly struct Position(int row, int column)
             if (rowDiff == 1 && colDiff == 0) return Direction.OddRowLowerRight;
             if (rowDiff == 1 && colDiff == -1) return Direction.OddRowLowerLeft;
             if (rowDiff == 0 && colDiff == -1) return Direction.OddRowLeft;
-            if (rowDiff == 1 && colDiff == 1) return Direction.OddRowUpperLeft;
+            if (rowDiff == -1 && colDiff == -1) return Direction.OddRowUpperLeft;
             if (rowDiff == -1 && colDiff == 0) return Direction.OddRowUpperRight;
         }
 

@@ -3,19 +3,9 @@ namespace BoLLogic;
 
 public sealed class MessageController
 {
-    private static MessageController instance = null;
+    private static readonly Lazy<MessageController> instance = new Lazy<MessageController>(() => new MessageController());
 
-    public static MessageController Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new MessageController();
-            }
-            return instance;
-        }
-    }
+    public static MessageController Instance => instance.Value;
 
 
     public event EventHandler<MessageEventArgs> Message;

@@ -3,19 +3,9 @@ namespace BoLLogic;
 
 public sealed class SoundController
 {
-    private static SoundController instance = null;
+    private static readonly Lazy<SoundController> instance = new Lazy<SoundController>(() => new SoundController());
 
-    public static SoundController Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new SoundController();
-            }
-            return instance;
-        }
-    }
+    public static SoundController Instance => instance.Value;
 
 
     public event EventHandler<SoundEventArgs> Play;

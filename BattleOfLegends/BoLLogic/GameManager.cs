@@ -18,19 +18,9 @@ public enum GamePhase
 public sealed class GameManager
 {
 
-    private static GameManager instance = null;
+    private static readonly Lazy<GameManager> instance = new Lazy<GameManager>(() => new GameManager());
 
-    public static GameManager Instance
-    {
-        get
-        {
-            if (instance == null)
-            {
-                instance = new GameManager();
-            }
-            return instance;
-        }
-    }
+    public static GameManager Instance => instance.Value;
 
 
     public Board CurrentBoard { get; set; }
@@ -51,8 +41,30 @@ public sealed class GameManager
 
     public void LoadGame(string path)
     {
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException($"Scenario file not found: {path}");
+        }
+
         string json = File.ReadAllText(path);
-        GameData data =  JsonSerializer.Deserialize<GameData>(json);
+
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            throw new InvalidDataException($"Scenario file is empty: {path}");
+        }
+
+        GameData data = JsonSerializer.Deserialize<GameData>(json);
+
+        if (data == null)
+        {
+            throw new InvalidDataException($"Failed to deserialize game data from: {path}");
+        }
+
+        // Validate required data
+        if (data.Tiles == null || data.Units == null || data.Cards == null || data.Players == null)
+        {
+            throw new InvalidDataException($"Game data is incomplete or corrupted: {path}");
+        }
 
         NumberOfRows = data.NumberOfRows;
         NumberOfColumns = data.NumberOfColumns;
@@ -75,8 +87,24 @@ public sealed class GameManager
 
     private (int, int) ParseKey(string key)
     {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            throw new ArgumentException("Key cannot be null or empty");
+        }
+
         var parts = key.Trim('(', ')').Split(',');
-        return (int.Parse(parts[0]), int.Parse(parts[1]));
+
+        if (parts.Length != 2)
+        {
+            throw new FormatException($"Invalid key format: {key}. Expected format: (row,col)");
+        }
+
+        if (!int.TryParse(parts[0], out int row) || !int.TryParse(parts[1], out int col))
+        {
+            throw new FormatException($"Invalid key format: {key}. Row and column must be integers");
+        }
+
+        return (row, col);
     }
 
 
@@ -137,9 +165,10 @@ public sealed class GameManager
     {
         CurrentGameRound = TurnManager.Instance.CurrentGameRound;
 
-        if (CurrentGameRound == CurrentBoard.EndRound)
+        if (CurrentGameRound >= CurrentBoard.EndRound)
         {
-            MessageController.Instance.Show("GAME OVER !");
+            MessageController.Instance.Show("GAME OVER ! Maximum rounds reached!");
+            TurnManager.Instance.CurrentGamePhase = GamePhase.End;
         }
 
         if (CurrentGameRound % 2 == 1)
