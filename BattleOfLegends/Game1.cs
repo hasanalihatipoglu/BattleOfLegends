@@ -69,6 +69,14 @@ public class Game1 : Game
     private bool _romePanelExpanded = false;
     private bool _carthagePanelExpanded = false;
 
+    // Message box state
+    private string _currentMessage = null;
+    private double _messageDisplayTime = 0;
+    private const double MESSAGE_DISPLAY_DURATION = 3.0; // seconds
+    private const float MESSAGE_BOX_WIDTH = 500f;
+    private const float MESSAGE_BOX_HEIGHT = 150f;
+    private const float MESSAGE_BOX_PADDING = 20f;
+
     // Phase tracker constants (vertical layout)
     private const float PHASE_BOX_WIDTH = 140f;
     private const float PHASE_BOX_HEIGHT = 50f;
@@ -262,6 +270,17 @@ public class Game1 : Game
     {
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
+
+        // Update message display timer
+        if (_currentMessage != null)
+        {
+            _messageDisplayTime += gameTime.ElapsedGameTime.TotalSeconds;
+            if (_messageDisplayTime >= MESSAGE_DISPLAY_DURATION)
+            {
+                _currentMessage = null;
+                _messageDisplayTime = 0;
+            }
+        }
 
         // Update card cache if needed (card states may have changed)
         if (_cardCacheDirty)
@@ -617,10 +636,10 @@ public class Game1 : Game
 
     private void OnMessage(object sender, MessageEventArgs e)
     {
-        // Show message in a Windows messagebox
-        System.Windows.Forms.MessageBox.Show(e.Message, "Battle of Legends",
-            System.Windows.Forms.MessageBoxButtons.OK,
-            System.Windows.Forms.MessageBoxIcon.Information);
+        // Display message in game UI
+        _currentMessage = e.Message;
+        _messageDisplayTime = 0;
+        System.Diagnostics.Debug.WriteLine($"Message: {e.Message}");
     }
 
     private void OnPlaySound(object sender, SoundEventArgs e)
@@ -999,6 +1018,13 @@ public class Game1 : Game
         DrawCurrentPlayerTracker();
         DrawRollButton(_totalElapsedSeconds);
         DrawCards();
+
+        // Draw message box on top of everything if there's a message
+        if (_currentMessage != null)
+        {
+            DrawMessageBox(_currentMessage);
+        }
+
         _spriteBatch.End();
 
         base.Draw(gameTime);
@@ -1007,7 +1033,7 @@ public class Game1 : Game
     private string GetUnitTextureKey(Unit unit)
     {
         string unitType = unit.GetType().Name;
-        string playerColor = unit.Faction == PlayerType.Rome ? "Blue" : "Red";
+        string playerColor = unit.Faction == PlayerType.Rome ? "Red" : "Blue";
 
         if (unit is Leader)
             return $"King-{playerColor}";
@@ -1083,7 +1109,7 @@ public class Game1 : Game
 
         // Draw panel background
         Rectangle panelRect = new Rectangle(0, (int)panelY, _graphics.PreferredBackBufferWidth, (int)panelHeight);
-        Color panelColor = isRome ? new Color(100, 100, 150, 200) : new Color(150, 100, 100, 200);
+        Color panelColor = isRome ? new Color(150, 100, 100, 200) : new Color(100, 100, 150, 200);
         _spriteBatch.Draw(_pixelTexture, panelRect, panelColor);
         DrawRectangle(_spriteBatch, _pixelTexture, panelRect, Color.Gray, 2f);
 
@@ -1198,6 +1224,9 @@ public class Game1 : Game
             // Determine card appearance
             Color cardColor = Color.White;
             bool isHighlighted = false;
+            bool isTimingMatch = false;
+            Color borderColor = Color.Gold;
+            float borderThickness = 3f;
 
             if (state == CardState.InHand && TurnManager.Instance.CurrentGamePhase != GamePhase.Select)
             {
@@ -1206,8 +1235,10 @@ public class Game1 : Game
                 if (firstCard.Faction == TurnManager.Instance.CurrentPlayer &&
                     firstCard.Timing == TurnManager.Instance.CurrentTurnPhase)
                 {
-                    cardColor = Color.LightGreen;
                     isHighlighted = true;
+                    isTimingMatch = true;
+                    borderColor = Color.LimeGreen;
+                    borderThickness = 5f;
                 }
             }
 
@@ -1215,6 +1246,11 @@ public class Game1 : Game
             {
                 cardColor = Color.Yellow;
                 isHighlighted = true;
+                if (!isTimingMatch)
+                {
+                    borderColor = Color.Gold;
+                    borderThickness = 3f;
+                }
             }
 
             // Draw stacked cards
@@ -1247,7 +1283,7 @@ public class Game1 : Game
                 // Draw border if highlighted (only on top card)
                 if (isHighlighted && stackIndex == group.Count - 1)
                 {
-                    DrawRectangle(_spriteBatch, _pixelTexture, cardRect, Color.Gold, 3f);
+                    DrawRectangle(_spriteBatch, _pixelTexture, cardRect, borderColor, borderThickness);
                 }
             }
 
@@ -1322,6 +1358,100 @@ public class Game1 : Game
         else
         {
             DrawSimpleText(_spriteBatch, countText, countPosition, Color.White, 1.0f, 30);
+        }
+    }
+
+    private void DrawMessageBox(string message)
+    {
+        // Calculate message box position (center of screen)
+        float boxX = (_graphics.PreferredBackBufferWidth - MESSAGE_BOX_WIDTH) / 2;
+        float boxY = (_graphics.PreferredBackBufferHeight - MESSAGE_BOX_HEIGHT) / 2;
+
+        // Draw semi-transparent overlay
+        Rectangle overlayRect = new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
+        _spriteBatch.Draw(_pixelTexture, overlayRect, new Color(0, 0, 0, 150));
+
+        // Draw message box background
+        Rectangle boxRect = new Rectangle((int)boxX, (int)boxY, (int)MESSAGE_BOX_WIDTH, (int)MESSAGE_BOX_HEIGHT);
+        _spriteBatch.Draw(_pixelTexture, boxRect, new Color(40, 40, 60, 255));
+        DrawRectangle(_spriteBatch, _pixelTexture, boxRect, Color.Gold, 4f);
+
+        // Draw title bar
+        Rectangle titleRect = new Rectangle((int)boxX, (int)boxY, (int)MESSAGE_BOX_WIDTH, 35);
+        _spriteBatch.Draw(_pixelTexture, titleRect, new Color(60, 60, 100, 255));
+        DrawRectangle(_spriteBatch, _pixelTexture, titleRect, Color.Gold, 2f);
+
+        // Draw title text
+        if (_font != null)
+        {
+            string title = "Battle of Legends";
+            float titleScale = 0.4f;
+            Vector2 titleSize = _font.MeasureString(title) * titleScale;
+            Vector2 titlePosition = new Vector2(boxX + (MESSAGE_BOX_WIDTH - titleSize.X) / 2, boxY + (35 - titleSize.Y) / 2);
+            _spriteBatch.DrawString(_font, title, titlePosition, Color.Gold, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
+        }
+
+        // Draw message text with word wrapping
+        if (_font != null)
+        {
+            float messageScale = 0.35f;
+            float maxWidth = MESSAGE_BOX_WIDTH - (MESSAGE_BOX_PADDING * 2);
+            Vector2 messagePosition = new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + 45);
+
+            // Simple word wrapping
+            string[] words = message.Split(' ');
+            string currentLine = "";
+            float lineHeight = _font.MeasureString("A").Y * messageScale + 5;
+            float currentY = messagePosition.Y;
+
+            foreach (string word in words)
+            {
+                string testLine = currentLine.Length > 0 ? currentLine + " " + word : word;
+                Vector2 testSize = _font.MeasureString(testLine) * messageScale;
+
+                if (testSize.X > maxWidth && currentLine.Length > 0)
+                {
+                    // Draw current line
+                    _spriteBatch.DrawString(_font, currentLine, new Vector2(messagePosition.X, currentY), Color.White, 0f, Vector2.Zero, messageScale, SpriteEffects.None, 0f);
+                    currentLine = word;
+                    currentY += lineHeight;
+                }
+                else
+                {
+                    currentLine = testLine;
+                }
+            }
+
+            // Draw last line
+            if (currentLine.Length > 0)
+            {
+                _spriteBatch.DrawString(_font, currentLine, new Vector2(messagePosition.X, currentY), Color.White, 0f, Vector2.Zero, messageScale, SpriteEffects.None, 0f);
+            }
+        }
+        else
+        {
+            // Fallback without font
+            DrawSimpleText(_spriteBatch, message, new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + 45), Color.White, 1.0f, (int)(MESSAGE_BOX_WIDTH - MESSAGE_BOX_PADDING * 2));
+        }
+
+        // Draw progress bar showing time remaining
+        float progressWidth = MESSAGE_BOX_WIDTH - (MESSAGE_BOX_PADDING * 2);
+        float progressHeight = 8f;
+        float progressX = boxX + MESSAGE_BOX_PADDING;
+        float progressY = boxY + MESSAGE_BOX_HEIGHT - MESSAGE_BOX_PADDING - progressHeight;
+
+        // Background
+        Rectangle progressBg = new Rectangle((int)progressX, (int)progressY, (int)progressWidth, (int)progressHeight);
+        _spriteBatch.Draw(_pixelTexture, progressBg, new Color(30, 30, 40, 255));
+        DrawRectangle(_spriteBatch, _pixelTexture, progressBg, Color.Gray, 1f);
+
+        // Progress bar
+        float progress = (float)(_messageDisplayTime / MESSAGE_DISPLAY_DURATION);
+        float progressBarWidth = progressWidth * (1 - progress); // Decrease as time passes
+        if (progressBarWidth > 0)
+        {
+            Rectangle progressBar = new Rectangle((int)progressX, (int)progressY, (int)progressBarWidth, (int)progressHeight);
+            _spriteBatch.Draw(_pixelTexture, progressBar, Color.Gold);
         }
     }
 
@@ -1569,9 +1699,9 @@ public class Game1 : Game
             (int)PHASE_BOX_HEIGHT);
 
         bool isRome = currentPlayer == PlayerType.Rome;
-        Color romeColor = isRome ? new Color(100, 150, 255) : new Color(80, 100, 120);
+        Color romeColor = isRome ? new Color(255, 100, 100) : new Color(120, 80, 80);
         _spriteBatch.Draw(_pixelTexture, romeButton, romeColor);
-        DrawRectangle(_spriteBatch, _pixelTexture, romeButton, isRome ? Color.Yellow : Color.DarkBlue, isRome ? 3f : 2f);
+        DrawRectangle(_spriteBatch, _pixelTexture, romeButton, isRome ? Color.Yellow : Color.DarkRed, isRome ? 3f : 2f);
 
         // Draw Rome text
         if (_font != null)
@@ -1596,9 +1726,9 @@ public class Game1 : Game
             (int)PHASE_BOX_HEIGHT);
 
         bool isCarthage = currentPlayer == PlayerType.Carthage;
-        Color carthageColor = isCarthage ? new Color(255, 100, 100) : new Color(120, 80, 80);
+        Color carthageColor = isCarthage ? new Color(100, 150, 255) : new Color(80, 100, 120);
         _spriteBatch.Draw(_pixelTexture, carthageButton, carthageColor);
-        DrawRectangle(_spriteBatch, _pixelTexture, carthageButton, isCarthage ? Color.Yellow : Color.DarkRed, isCarthage ? 3f : 2f);
+        DrawRectangle(_spriteBatch, _pixelTexture, carthageButton, isCarthage ? Color.Yellow : Color.DarkBlue, isCarthage ? 3f : 2f);
 
         // Draw Carthage text
         if (_font != null)
@@ -1673,7 +1803,7 @@ public class Game1 : Game
 
     private Color GetCardColor(PlayerType faction)
     {
-        return faction == PlayerType.Rome ? new Color(100, 150, 255) : new Color(255, 100, 100);
+        return faction == PlayerType.Rome ? new Color(255, 100, 100) : new Color(100, 150, 255);
     }
 
     private void DrawRectangle(SpriteBatch spriteBatch, Texture2D pixel, Rectangle rect, Color color, float thickness)

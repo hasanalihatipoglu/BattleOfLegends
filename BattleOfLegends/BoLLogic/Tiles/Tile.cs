@@ -41,7 +41,6 @@ public abstract class Tile
 
 
                 case UnitState.Active:
-                case UnitState.Retreating:
                 case UnitState.Advancing:
                 case UnitState.Defending:
                     if (PathFinder.Instance.CurrentFrontier.Tiles.Contains(this))
@@ -129,8 +128,6 @@ public abstract class Tile
                         PathFinder.Instance.ResetAll();
                     }
                     break;
-
-                case UnitState.Retreating:
 
                 case UnitState.Defending:
                     if (PathFinder.Instance.CurrentSpaces.ContainsKey(this))

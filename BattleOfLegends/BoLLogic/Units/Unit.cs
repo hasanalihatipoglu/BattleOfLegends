@@ -265,6 +265,7 @@ public abstract class Unit
         switch (State)
         {                   
             case UnitState.Retreating:
+                // Automatic retreat from combat - find and use first available path
                 PathFinder.Instance.FindPaths(this, this.Tile, PathType.Retreat);
                 if (PathFinder.Instance.CurrentSpaces.Count > 0)
                 {

@@ -226,6 +226,10 @@ public class Board
                         instance.State = state;
                         instance.Health = new HealthSystem { Unit = instance };
                         instance.Health.SetHealth(health);
+
+                        // Subscribe to combat events for automatic retreat
+                        CombatManager.Instance.ChangeUnitState += instance.On_StateChanged;
+
                         Units.Add(instance);
                     }
                     else
