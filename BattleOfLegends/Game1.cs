@@ -59,6 +59,16 @@ public class Game1 : Game
     private const float CARD_SPACING = 10f;
     private const float CARD_HAND_Y = 20f; // Distance from bottom of screen
 
+    // Card panel constants
+    private const float PANEL_COLLAPSED_HEIGHT = 40f; // Height when collapsed (showing arrow button)
+    private const float PANEL_EXPANDED_HEIGHT = 200f; // Height when expanded (showing all cards)
+    private const float ARROW_BUTTON_SIZE = 30f;
+    private const float CARD_PANEL_OFFSET = 50f; // Distance cards move out of panel when selected for hand
+
+    // Panel state tracking
+    private bool _romePanelExpanded = false;
+    private bool _carthagePanelExpanded = false;
+
     // Phase tracker constants (vertical layout)
     private const float PHASE_BOX_WIDTH = 140f;
     private const float PHASE_BOX_HEIGHT = 50f;
@@ -189,27 +199,34 @@ public class Game1 : Game
             // Load background
             _backgroundTexture = Content.Load<Texture2D>("paperboard-yellow-texture");
 
-            // Load card textures
-            _cardTextures["Withdraw"] = Content.Load<Texture2D>("Withdraw");
-            _cardTextures["CavalryCharge"] = Content.Load<Texture2D>("CavalryCharge");
-            _cardTextures["CavalryCounter"] = Content.Load<Texture2D>("CavalryCounter");
-            _cardTextures["CavalryPursue"] = Content.Load<Texture2D>("CavalryPursue");
-            _cardTextures["Flanking"] = Content.Load<Texture2D>("Flanking");
-            _cardTextures["FirstStrike"] = Content.Load<Texture2D>("FirstStrike");
-            _cardTextures["Envelopment"] = Content.Load<Texture2D>("Envelopment");
-            _cardTextures["HitAndRun"] = Content.Load<Texture2D>("HitAndRun");
-            _cardTextures["Skirmish"] = Content.Load<Texture2D>("Skirmish");
-            _cardTextures["Advance"] = Content.Load<Texture2D>("Advance");
-            _cardTextures["Leadership"] = Content.Load<Texture2D>("Leadership");
-            _cardTextures["MixedOrder"] = Content.Load<Texture2D>("MixedOrder");
-
-            // Load card back texture
-            _cardBackTexture = Content.Load<Texture2D>("CardBack");
+            // Try to load card textures (optional - will use fallback rendering if missing)
+            try
+            {
+                _cardTextures["Withdraw"] = Content.Load<Texture2D>("Withdraw");
+                _cardTextures["CavalryCharge"] = Content.Load<Texture2D>("CavalryCharge");
+                _cardTextures["CavalryCounter"] = Content.Load<Texture2D>("CavalryCounter");
+                _cardTextures["CavalryPursue"] = Content.Load<Texture2D>("CavalryPursue");
+                _cardTextures["Flanking"] = Content.Load<Texture2D>("Flanking");
+                _cardTextures["FirstStrike"] = Content.Load<Texture2D>("FirstStrike");
+                _cardTextures["Envelopment"] = Content.Load<Texture2D>("Envelopment");
+                _cardTextures["HitAndRun"] = Content.Load<Texture2D>("HitAndRun");
+                _cardTextures["Skirmish"] = Content.Load<Texture2D>("Skirmish");
+                _cardTextures["Advance"] = Content.Load<Texture2D>("Advance");
+                _cardTextures["Leadership"] = Content.Load<Texture2D>("Leadership");
+                _cardTextures["MixedOrder"] = Content.Load<Texture2D>("MixedOrder");
+                _cardBackTexture = Content.Load<Texture2D>("CardBack");
+                System.Diagnostics.Debug.WriteLine("Card textures loaded successfully");
+            }
+            catch (Exception cardEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"Card textures not found, using fallback rendering: {cardEx.Message}");
+                _cardBackTexture = null;
+            }
 
             // Try to load font (if it fails, we'll use bitmap font fallback)
             try
             {
-                _font = Content.Load<SpriteFont>("04B_30");
+                _font = Content.Load<SpriteFont>("ANTIQUE");
                 System.Diagnostics.Debug.WriteLine("SpriteFont loaded successfully");
             }
             catch (Exception fontEx)
@@ -329,6 +346,11 @@ public class Game1 : Game
             {
                 // Phase tracker was clicked, don't process other clicks
             }
+            // Check if clicking on arrow buttons to expand/collapse card panels
+            else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
+            {
+                // Arrow button was clicked, don't process other clicks
+            }
             // Check if clicking on a card (screen space, not world space)
             else if (HandleCardClick(mouseState.X, mouseState.Y))
             {
@@ -384,7 +406,7 @@ public class Game1 : Game
         var phases = System.Enum.GetValues(typeof(TurnPhase)).Cast<TurnPhase>().Where(p => p != TurnPhase.None).ToArray();
 
         // Calculate vertical tracker position (right side of screen)
-        float startY = 20;
+        float startY = 200;
         float trackerX = _graphics.PreferredBackBufferWidth - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
 
         // Check up button (at top)
@@ -449,7 +471,7 @@ public class Game1 : Game
         var phases = System.Enum.GetValues(typeof(GamePhase)).Cast<GamePhase>().ToArray();
 
         // Calculate vertical tracker position (left side of screen)
-        float startY = 20;
+        float startY = 200;
         float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
 
         // Check up button (at top)
@@ -525,7 +547,7 @@ public class Game1 : Game
         var gamePhases = System.Enum.GetValues(typeof(GamePhase)).Cast<GamePhase>().ToArray();
 
         // Calculate vertical position (left side, below TurnPhase tracker)
-        float gamePhaseHeight = 20 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
+        float gamePhaseHeight = 200 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float turnPhaseHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (turnPhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float startY = gamePhaseHeight + 50;
 
@@ -625,19 +647,59 @@ public class Game1 : Game
         }
     }
 
+    private bool HandleArrowButtonClick(int mouseX, int mouseY)
+    {
+        // Rome panel arrow button (bottom of screen)
+        float romeArrowY = _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2;
+        float arrowX = (_graphics.PreferredBackBufferWidth - ARROW_BUTTON_SIZE) / 2;
+
+        Rectangle romeArrowButton = new Rectangle(
+            (int)arrowX,
+            (int)romeArrowY,
+            (int)ARROW_BUTTON_SIZE,
+            (int)ARROW_BUTTON_SIZE);
+
+        if (romeArrowButton.Contains(mouseX, mouseY))
+        {
+            _romePanelExpanded = !_romePanelExpanded;
+            System.Diagnostics.Debug.WriteLine($"Rome panel toggled: {(_romePanelExpanded ? "expanded" : "collapsed")}");
+            return true;
+        }
+
+        // Carthage panel arrow button (top of screen)
+        float carthageArrowY = PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2;
+
+        Rectangle carthageArrowButton = new Rectangle(
+            (int)arrowX,
+            (int)carthageArrowY,
+            (int)ARROW_BUTTON_SIZE,
+            (int)ARROW_BUTTON_SIZE);
+
+        if (carthageArrowButton.Contains(mouseX, mouseY))
+        {
+            _carthagePanelExpanded = !_carthagePanelExpanded;
+            System.Diagnostics.Debug.WriteLine($"Carthage panel toggled: {(_carthagePanelExpanded ? "expanded" : "collapsed")}");
+            return true;
+        }
+
+        return false;
+    }
+
     private bool HandleCardClick(int mouseX, int mouseY)
     {
         if (_board?.Cards == null) return false;
 
-        // Use cached card lists instead of LINQ queries
-        float romeY = _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y;
-        if (CheckCardHandClick(_romeCardsCache, mouseX, mouseY, romeY))
+        // Calculate card positions based on panel state
+        float romeY = GetRomeCardYPosition();
+        float carthageY = GetCarthageCardYPosition();
+
+        if (CheckCardHandClick(_romeCardsCache, mouseX, mouseY, romeY, PlayerType.Rome))
         {
             _cardCacheDirty = true; // Mark cache as dirty after card interaction
             return true;
         }
 
-        if (CheckCardHandClick(_carthageCardsCache, mouseX, mouseY, CARD_HAND_Y))
+        if (CheckCardHandClick(_carthageCardsCache, mouseX, mouseY, carthageY, PlayerType.Carthage))
         {
             _cardCacheDirty = true; // Mark cache as dirty after card interaction
             return true;
@@ -646,23 +708,99 @@ public class Game1 : Game
         return false;
     }
 
-    private bool CheckCardHandClick(List<Card> cards, int mouseX, int mouseY, float yPosition)
+    private float GetRomeCardYPosition()
+    {
+        // Rome cards are at bottom
+        if (_romePanelExpanded)
+        {
+            // Panel is expanded - cards are inside the panel
+            return _graphics.PreferredBackBufferHeight - PANEL_EXPANDED_HEIGHT + 20;
+        }
+        else
+        {
+            // Panel is collapsed - just below the collapsed panel
+            return _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10;
+        }
+    }
+
+    private float GetCarthageCardYPosition()
+    {
+        // Carthage cards are at top
+        if (_carthagePanelExpanded)
+        {
+            // Panel is expanded - cards are inside the panel
+            return PANEL_EXPANDED_HEIGHT - CARD_HEIGHT - 20;
+        }
+        else
+        {
+            // Panel is collapsed - just above the collapsed panel
+            return PANEL_COLLAPSED_HEIGHT + 10;
+        }
+    }
+
+    private bool CheckCardHandClick(List<Card> cards, int mouseX, int mouseY, float yPosition, PlayerType faction)
     {
         if (cards.Count == 0) return false;
 
+        // Separate cards by state: InDeck vs InHand
+        var deckCards = cards.Where(c => c.State == CardState.InDeck).ToList();
+        var handCards = cards.Where(c => c.State == CardState.InHand).ToList();
+
+        // Determine if panel is expanded
+        bool panelExpanded = (faction == PlayerType.Rome) ? _romePanelExpanded : _carthagePanelExpanded;
+
+        // Check deck cards (only visible when panel is expanded)
+        if (panelExpanded && deckCards.Count > 0)
+        {
+            if (CheckCardGroupClick(deckCards, mouseX, mouseY, yPosition))
+            {
+                return true;
+            }
+        }
+
+        // Check hand cards (always visible, positioned based on panel state)
+        if (handCards.Count > 0)
+        {
+            float handY = yPosition;
+            if (panelExpanded)
+            {
+                // Hand cards move out of panel by CARD_PANEL_OFFSET
+                handY = (faction == PlayerType.Rome)
+                    ? yPosition - CARD_PANEL_OFFSET
+                    : yPosition + CARD_PANEL_OFFSET;
+            }
+
+            if (CheckCardGroupClick(handCards, mouseX, mouseY, handY))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool CheckCardGroupClick(List<Card> cards, int mouseX, int mouseY, float yPosition)
+    {
+        if (cards.Count == 0) return false;
+
+        // Group cards by type for display
+        var groupedCards = cards.GroupBy(c => c.Type)
+                                .Select(g => new { CardType = g.Key, Cards = g.ToList() })
+                                .ToList();
+
         // Calculate card positions
-        float totalWidth = (cards.Count * CARD_WIDTH) + ((cards.Count - 1) * CARD_SPACING);
+        float totalWidth = (groupedCards.Count * CARD_WIDTH) + ((groupedCards.Count - 1) * CARD_SPACING);
         float startX = (_graphics.PreferredBackBufferWidth - totalWidth) / 2;
 
-        for (int i = 0; i < cards.Count; i++)
+        for (int i = 0; i < groupedCards.Count; i++)
         {
             float xPosition = startX + (i * (CARD_WIDTH + CARD_SPACING));
             Rectangle cardRect = new Rectangle((int)xPosition, (int)yPosition, (int)CARD_WIDTH, (int)CARD_HEIGHT);
 
             if (cardRect.Contains(mouseX, mouseY))
             {
-                // Call the card's OnClick method
-                cards[i].OnClick();
+                // Click the first card in this group
+                groupedCards[i].Cards[0].OnClick();
                 return true;
             }
         }
@@ -926,39 +1064,151 @@ public class Game1 : Game
     {
         if (_board?.Cards == null) return;
 
-        // Use cached card lists instead of LINQ queries every frame
-        DrawCardHand(_romeCardsCache, _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y, PlayerType.Rome);
-        DrawCardHand(_carthageCardsCache, CARD_HAND_Y, PlayerType.Carthage);
+        // Draw Rome panel and cards (bottom)
+        DrawCardPanel(PlayerType.Rome, _romePanelExpanded, _romeCardsCache);
+
+        // Draw Carthage panel and cards (top)
+        DrawCardPanel(PlayerType.Carthage, _carthagePanelExpanded, _carthageCardsCache);
     }
 
-    private void DrawCardHand(List<Card> cards, float yPosition, PlayerType faction)
+    private void DrawCardPanel(PlayerType faction, bool isExpanded, List<Card> cards)
+    {
+        bool isRome = (faction == PlayerType.Rome);
+        float panelHeight = isExpanded ? PANEL_EXPANDED_HEIGHT : PANEL_COLLAPSED_HEIGHT;
+
+        // Calculate panel position
+        float panelY = isRome
+            ? _graphics.PreferredBackBufferHeight - panelHeight
+            : 0;
+
+        // Draw panel background
+        Rectangle panelRect = new Rectangle(0, (int)panelY, _graphics.PreferredBackBufferWidth, (int)panelHeight);
+        Color panelColor = isRome ? new Color(100, 100, 150, 200) : new Color(150, 100, 100, 200);
+        _spriteBatch.Draw(_pixelTexture, panelRect, panelColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, panelRect, Color.Gray, 2f);
+
+        // Draw arrow button
+        DrawArrowButton(faction, isExpanded);
+
+        // Separate cards by state
+        var deckCards = cards.Where(c => c.State == CardState.InDeck).ToList();
+        var handCards = cards.Where(c => c.State == CardState.InHand).ToList();
+
+        // Draw deck cards (only when expanded)
+        if (isExpanded && deckCards.Count > 0)
+        {
+            float deckY = isRome
+                ? _graphics.PreferredBackBufferHeight - PANEL_EXPANDED_HEIGHT + 20
+                : PANEL_EXPANDED_HEIGHT - CARD_HEIGHT - 20;
+            DrawCardGroup(deckCards, deckY, faction, CardState.InDeck);
+        }
+
+        // Draw hand cards (always visible, move out when panel expanded)
+        if (handCards.Count > 0)
+        {
+            float handY;
+            if (isExpanded)
+            {
+                // Hand cards move out of panel
+                handY = isRome
+                    ? panelY - CARD_PANEL_OFFSET
+                    : panelY + panelHeight + CARD_PANEL_OFFSET;
+            }
+            else
+            {
+                // Hand cards positioned near collapsed panel
+                handY = isRome
+                    ? _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10
+                    : PANEL_COLLAPSED_HEIGHT + 10;
+            }
+            DrawCardGroup(handCards, handY, faction, CardState.InHand);
+        }
+    }
+
+    private void DrawArrowButton(PlayerType faction, bool isExpanded)
+    {
+        bool isRome = (faction == PlayerType.Rome);
+
+        // Calculate arrow button position
+        float arrowX = (_graphics.PreferredBackBufferWidth - ARROW_BUTTON_SIZE) / 2;
+        float arrowY = isRome
+            ? _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2
+            : PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2;
+
+        Rectangle arrowRect = new Rectangle((int)arrowX, (int)arrowY, (int)ARROW_BUTTON_SIZE, (int)ARROW_BUTTON_SIZE);
+
+        // Draw button background
+        _spriteBatch.Draw(_pixelTexture, arrowRect, Color.DarkGray);
+        DrawRectangle(_spriteBatch, _pixelTexture, arrowRect, Color.White, 2f);
+
+        // Draw arrow symbol (triangle pointing up/down)
+        DrawArrowSymbol(arrowRect, isExpanded, isRome);
+    }
+
+    private void DrawArrowSymbol(Rectangle buttonRect, bool isExpanded, bool isRome)
+    {
+        // Determine arrow direction: Rome expanded = up arrow, collapsed = down arrow
+        // Carthage expanded = down arrow, collapsed = up arrow
+        bool pointUp = isRome ? isExpanded : !isExpanded;
+
+        float centerX = buttonRect.X + buttonRect.Width / 2;
+        float centerY = buttonRect.Y + buttonRect.Height / 2;
+        float arrowSize = 8f;
+
+        Vector2 p1, p2, p3;
+        if (pointUp)
+        {
+            p1 = new Vector2(centerX, centerY - arrowSize);
+            p2 = new Vector2(centerX - arrowSize, centerY + arrowSize);
+            p3 = new Vector2(centerX + arrowSize, centerY + arrowSize);
+        }
+        else
+        {
+            p1 = new Vector2(centerX, centerY + arrowSize);
+            p2 = new Vector2(centerX - arrowSize, centerY - arrowSize);
+            p3 = new Vector2(centerX + arrowSize, centerY - arrowSize);
+        }
+
+        // Draw triangle
+        DrawLine(_spriteBatch, _pixelTexture, p1, p2, Color.White, 2f);
+        DrawLine(_spriteBatch, _pixelTexture, p2, p3, Color.White, 2f);
+        DrawLine(_spriteBatch, _pixelTexture, p3, p1, Color.White, 2f);
+    }
+
+    private void DrawCardGroup(List<Card> cards, float yPosition, PlayerType faction, CardState state)
     {
         if (cards.Count == 0) return;
 
-        // Group cards by type and state to stack identical cards
-        var groupedCards = cards.GroupBy(c => new { c.Type, c.State })
-                                .Select(g => new { CardType = g.Key.Type, State = g.Key.State, Cards = g.ToList(), Count = g.Count() })
+        // Group cards by type to stack identical cards
+        var groupedCards = cards.GroupBy(c => c.Type)
+                                .Select(g => new { CardType = g.Key, Cards = g.ToList(), Count = g.Count() })
                                 .ToList();
 
-        // Calculate total width and starting X position to center the hand
+        // Calculate total width and starting X position to center the cards
         float totalWidth = (groupedCards.Count * CARD_WIDTH) + ((groupedCards.Count - 1) * CARD_SPACING);
         float startX = (_graphics.PreferredBackBufferWidth - totalWidth) / 2;
 
-        const float stackOffset = 3f; // Offset for stacked cards
+        const float stackOffset = 3f;
 
         for (int i = 0; i < groupedCards.Count; i++)
         {
             var group = groupedCards[i];
             float xPosition = startX + (i * (CARD_WIDTH + CARD_SPACING));
 
-            // Determine card appearance based on state
+            // Determine card appearance
             Color cardColor = Color.White;
             bool isHighlighted = false;
 
-            if (group.State == CardState.ReadyToPlay)
+            if (state == CardState.InHand && TurnManager.Instance.CurrentGamePhase != GamePhase.Select)
             {
-                cardColor = Color.LightGreen;
-                isHighlighted = true;
+                // Check if card is ready to play based on timing
+                var firstCard = group.Cards[0];
+                if (firstCard.Faction == TurnManager.Instance.CurrentPlayer &&
+                    firstCard.Timing == TurnManager.Instance.CurrentTurnPhase)
+                {
+                    cardColor = Color.LightGreen;
+                    isHighlighted = true;
+                }
             }
 
             if (TurnManager.Instance.SelectedCard != null && group.Cards.Contains(TurnManager.Instance.SelectedCard))
@@ -971,7 +1221,7 @@ public class Game1 : Game
             for (int stackIndex = 0; stackIndex < group.Count; stackIndex++)
             {
                 float offsetX = stackIndex * stackOffset;
-                float offsetY = -stackIndex * stackOffset; // Stack upward
+                float offsetY = -stackIndex * stackOffset;
 
                 Rectangle cardRect = new Rectangle(
                     (int)(xPosition + offsetX),
@@ -987,12 +1237,10 @@ public class Game1 : Game
                 }
                 else if (_cardBackTexture != null)
                 {
-                    // Use card back if specific card texture not found
                     _spriteBatch.Draw(_cardBackTexture, cardRect, cardColor);
                 }
                 else
                 {
-                    // Draw colored rectangle as fallback
                     _spriteBatch.Draw(_pixelTexture, cardRect, GetCardColor(faction));
                 }
 
@@ -1017,66 +1265,63 @@ public class Game1 : Game
 
             // Draw card name
             string cardText = group.CardType.ToString();
-
-            // Split camel case for better readability
             cardText = System.Text.RegularExpressions.Regex.Replace(cardText, "([a-z])([A-Z])", "$1 $2");
 
-            // Draw text using SpriteFont if available, otherwise use bitmap font
             Vector2 textPosition = new Vector2(xPosition + topOffsetX + 5, yPosition + topOffsetY + CARD_HEIGHT - 20);
 
             if (_font != null)
             {
-                // Use SpriteFont with dynamic scaling to fit text
-                string displayText = cardText;
-                float maxWidth = CARD_WIDTH - 10;
-                float scale = 0.35f; // Adjusted for larger font size (16pt)
-
-                // Measure at current scale
-                Vector2 textSize = _font.MeasureString(displayText) * scale;
-
-                // If text is too wide, reduce scale to make it fit
-                if (textSize.X > maxWidth)
-                {
-                    scale = maxWidth / _font.MeasureString(displayText).X;
-                    // Don't go too small
-                    if (scale < 0.25f)
-                    {
-                        scale = 0.25f;
-                    }
-                }
-
-                _spriteBatch.DrawString(_font, displayText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+                DrawCardText(cardText, textPosition);
             }
             else
             {
-                // Use bitmap font fallback
                 DrawSimpleText(_spriteBatch, cardText, textPosition, Color.White, 1.0f, (int)CARD_WIDTH - 10);
             }
 
             // Draw count if more than 1
             if (group.Count > 1)
             {
-                string countText = $"x{group.Count}";
-
-                // Draw background circle for count
-                Vector2 countCenter = new Vector2(
-                    xPosition + topOffsetX + CARD_WIDTH - 18,
-                    yPosition + topOffsetY + 15
-                );
-                DrawCircle(_spriteBatch, _pixelTexture, countCenter, 12f, new Color(0, 0, 0, 200));
-
-                // Draw count text
-                Vector2 countPosition = new Vector2(countCenter.X - countText.Length * 3, countCenter.Y - 5);
-
-                if (_font != null)
-                {
-                    _spriteBatch.DrawString(_font, countText, countPosition, Color.White, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 0f);
-                }
-                else
-                {
-                    DrawSimpleText(_spriteBatch, countText, countPosition, Color.White, 1.0f, 30);
-                }
+                DrawCardCount(group.Count, xPosition + topOffsetX, yPosition + topOffsetY);
             }
+        }
+    }
+
+    private void DrawCardText(string cardText, Vector2 textPosition)
+    {
+        string displayText = cardText;
+        float maxWidth = CARD_WIDTH - 10;
+        float scale = 0.35f;
+
+        Vector2 textSize = _font.MeasureString(displayText) * scale;
+
+        if (textSize.X > maxWidth)
+        {
+            scale = maxWidth / _font.MeasureString(displayText).X;
+            if (scale < 0.25f)
+            {
+                scale = 0.25f;
+            }
+        }
+
+        _spriteBatch.DrawString(_font, displayText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+    }
+
+    private void DrawCardCount(int count, float x, float y)
+    {
+        string countText = $"x{count}";
+
+        Vector2 countCenter = new Vector2(x + CARD_WIDTH - 18, y + 15);
+        DrawCircle(_spriteBatch, _pixelTexture, countCenter, 12f, new Color(0, 0, 0, 200));
+
+        Vector2 countPosition = new Vector2(countCenter.X - countText.Length * 3, countCenter.Y - 5);
+
+        if (_font != null)
+        {
+            _spriteBatch.DrawString(_font, countText, countPosition, Color.White, 0f, Vector2.Zero, 0.35f, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            DrawSimpleText(_spriteBatch, countText, countPosition, Color.White, 1.0f, 30);
         }
     }
 
@@ -1087,14 +1332,14 @@ public class Game1 : Game
         var currentPhase = TurnManager.Instance.CurrentTurnPhase;
 
         // Calculate vertical tracker position (right side of screen)
-        float startY = 20;
-        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
+        float startY = 200;
+        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 40;
         float trackerX = _graphics.PreferredBackBufferWidth - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
             (int)(trackerX - 5),
-            (int)(startY - 10),
+            (int)(startY - 30),
             (int)(PHASE_BOX_WIDTH + 10),
             (int)totalHeight);
         _spriteBatch.Draw(_pixelTexture, bgPanel, new Color(40, 80, 40, 220));
@@ -1103,7 +1348,7 @@ public class Game1 : Game
         // Draw title above the tracker
         if (_font != null)
         {
-            _spriteBatch.DrawString(_font, "TURN", new Vector2(trackerX + 35, startY - 5), Color.White, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_font, "TURN", new Vector2(trackerX + 45, startY - 25), Color.White, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
         }
 
         // Draw up button
@@ -1195,13 +1440,13 @@ public class Game1 : Game
         var currentPhase = TurnManager.Instance.CurrentGamePhase;
 
         // Calculate vertical tracker position (left side of screen)
-        float startY = 20;
-        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
+        float startY = 200;
+        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 35;
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
             (int)(PHASE_TRACKER_LEFT_X - 5),
-            (int)(startY - 10),
+            (int)(startY - 25),
             (int)(PHASE_BOX_WIDTH + 10),
             (int)totalHeight);
         _spriteBatch.Draw(_pixelTexture, bgPanel, new Color(50, 50, 100, 220));
@@ -1210,7 +1455,7 @@ public class Game1 : Game
         // Draw title above the tracker
         if (_font != null)
         {
-            _spriteBatch.DrawString(_font, "GAME", new Vector2(PHASE_TRACKER_LEFT_X + 35, startY - 5), Color.White, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_font, "GAME", new Vector2(PHASE_TRACKER_LEFT_X + 45, startY - 20), Color.White, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
         }
 
         // Draw up button
@@ -1296,15 +1541,15 @@ public class Game1 : Game
         var gamePhases = System.Enum.GetValues(typeof(GamePhase)).Cast<GamePhase>().ToArray();
 
         // Calculate vertical position (left side, below TurnPhase tracker)
-        float gamePhaseHeight = 20 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
+        float gamePhaseHeight = 200 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float gapUI = 50;
         float startY = gamePhaseHeight + gapUI;
-        float totalHeight = 2 * PHASE_BOX_HEIGHT + PHASE_SPACING + 20;
+        float totalHeight = 2 * PHASE_BOX_HEIGHT + PHASE_SPACING + 40;
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
             (int)(PHASE_TRACKER_LEFT_X - 5),
-            (int)(startY - 10),
+            (int)(startY - 30),
             (int)(PHASE_BOX_WIDTH + 10),
             (int)totalHeight);
         _spriteBatch.Draw(_pixelTexture, bgPanel, new Color(80, 60, 40, 220));
@@ -1313,7 +1558,7 @@ public class Game1 : Game
         // Draw title above the tracker
         if (_font != null)
         {
-            _spriteBatch.DrawString(_font, "PLAYER", new Vector2(PHASE_TRACKER_LEFT_X + 25, startY - 5), Color.White, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
+            _spriteBatch.DrawString(_font, "PLAYER", new Vector2(PHASE_TRACKER_LEFT_X + 40, startY - 20), Color.White, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
         }
 
         // Draw Rome button
