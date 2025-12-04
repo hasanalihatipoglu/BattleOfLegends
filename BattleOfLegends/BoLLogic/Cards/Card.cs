@@ -42,21 +42,24 @@ public abstract class Card
 
     public void On_Update(object sender, EventArgs e)
     {
+        System.Diagnostics.Debug.WriteLine($"On_Update: {this.Type} ({this.Faction}) - State: {this.State}, CurrentPlayer: {TurnManager.Instance.CurrentPlayer}, CurrentPhase: {TurnManager.Instance.CurrentTurnPhase}, Timing: {this.Timing}");
 
         if (this.Faction == TurnManager.Instance.CurrentPlayer
             && this.Timing == TurnManager.Instance.CurrentTurnPhase
-            && (this.State == CardState.InHand || this.State == CardState.ReadyToPlay))            
-           
+            && (this.State == CardState.InHand || this.State == CardState.ReadyToPlay))
+
         {
-            this.State = CardState.ReadyToPlay;
-            //  ChangeCardState(CardState.ReadyToPlay);  ----> Triggers Form1's On_Update causing Blinking
+            System.Diagnostics.Debug.WriteLine($"  -> Setting {this.Type} to ReadyToPlay");
+            //this.State = CardState.ReadyToPlay;
+              ChangeCardState(CardState.ReadyToPlay);  //----> Triggers Form1's On_Update causing Blinking
         }
 
 
         else if (this.State == CardState.ReadyToPlay)
         {
-            this.State = CardState.InHand;
-            //  ChangeCardState(CardState.InHand);  ----> Triggers Form1's On_Update causing Blinking
+            System.Diagnostics.Debug.WriteLine($"  -> Setting {this.Type} back to InHand");
+            //this.State = CardState.InHand;
+              ChangeCardState(CardState.InHand);  //----> Triggers Form1's On_Update causing Blinking
         }
 
     }
@@ -113,7 +116,9 @@ public abstract class Card
 
     public void ChangeCardState(CardState state)
     {
+        var oldState = this.State;
         this.State = state;
+        System.Diagnostics.Debug.WriteLine($"*** CARD STATE CHANGED: {this.Type} ({this.Faction}) from {oldState} -> {state}");
         ChangeState?.Invoke(this, EventArgs.Empty);
     }
 

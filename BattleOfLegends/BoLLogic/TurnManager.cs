@@ -94,6 +94,8 @@ public sealed class TurnManager
 
     public void AdvanceTurnPhase()
     {
+        System.Diagnostics.Debug.WriteLine($"AdvanceTurnPhase called. Current phase: {CurrentTurnPhase}, Current player: {CurrentPlayer}");
+        System.Diagnostics.Debug.WriteLine($"ChangeTurnPhase event has {ChangeTurnPhase?.GetInvocationList().Length ?? 0} subscribers");
         ChangeTurnPhase?.Invoke(this, EventArgs.Empty);
     }
 

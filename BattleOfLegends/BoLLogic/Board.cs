@@ -32,16 +32,23 @@ public class Board
 
     public void Initialize()
     {
+        System.Diagnostics.Debug.WriteLine("========== BOARD INITIALIZATION STARTED ==========");
         AddPlayers();
         SetFirstPlayer();
         AddPositions();
         AddTiles();
         AddUnits();
         AddCards();
+        System.Diagnostics.Debug.WriteLine($"========== ADDED {Cards.Count} CARDS ==========");
         SetTiles();
         SetLeaders();
         SetRound();
         SetPhases();
+
+        // Trigger initial turn phase event to update card states
+        System.Diagnostics.Debug.WriteLine("========== TRIGGERING AdvanceTurnPhase ==========");
+        TurnManager.Instance.AdvanceTurnPhase();
+        System.Diagnostics.Debug.WriteLine("========== BOARD INITIALIZATION COMPLETE ==========");
     }
 
 
@@ -279,6 +286,11 @@ public class Board
                 if (instance != null)
                 {
                     instance.State = state;
+
+                    // Subscribe to turn phase changes to update card playability
+                    TurnManager.Instance.ChangeTurnPhase += instance.On_Update;
+                    System.Diagnostics.Debug.WriteLine($"Subscribed card: {instance.Type} ({instance.Faction}) with state {instance.State}");
+
                     Cards.Add(instance);
                 }
 

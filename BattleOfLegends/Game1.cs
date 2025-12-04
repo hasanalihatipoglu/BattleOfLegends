@@ -72,7 +72,7 @@ public class Game1 : Game
     // Message box state
     private string _currentMessage = null;
     private double _messageDisplayTime = 0;
-    private const double MESSAGE_DISPLAY_DURATION = 3.0; // seconds
+    private const double MESSAGE_DISPLAY_DURATION = 1.0; // seconds
     private const float MESSAGE_BOX_WIDTH = 500f;
     private const float MESSAGE_BOX_HEIGHT = 150f;
     private const float MESSAGE_BOX_PADDING = 20f;
@@ -110,8 +110,10 @@ public class Game1 : Game
         GameManager.Instance.LoadGame(scenarioPath);
 
         // Initialize board
+        System.Diagnostics.Debug.WriteLine("========== GAME1: CREATING BOARD ==========");
         _board = new Board();
         _board.Initialize();
+        System.Diagnostics.Debug.WriteLine($"========== GAME1: BOARD INITIALIZED WITH {_board.Cards.Count} CARDS ==========");
         GameManager.Instance.CurrentBoard = _board;
         PathFinder.Instance.CurrentBoard = _board;
 
@@ -120,6 +122,14 @@ public class Game1 : Game
 
         // Subscribe to sound events
         SoundController.Instance.Play += OnPlaySound;
+
+        // Subscribe to card state changes to update cache
+        System.Diagnostics.Debug.WriteLine($"========== GAME1: SUBSCRIBING TO {_board.Cards.Count} CARD STATE CHANGES ==========");
+        foreach (var card in _board.Cards)
+        {
+            card.ChangeState += OnCardStateChanged;
+            System.Diagnostics.Debug.WriteLine($"  Subscribed to {card.Type} ({card.Faction}) state changes");
+        }
 
         // Initialize game state
         _gameState = new GameState(_board);
@@ -142,6 +152,13 @@ public class Game1 : Game
             return;
         }
 
+        System.Diagnostics.Debug.WriteLine("========== UPDATING CARD CACHE ==========");
+        System.Diagnostics.Debug.WriteLine($"Total cards: {_board.Cards.Count}");
+        foreach (var card in _board.Cards)
+        {
+            System.Diagnostics.Debug.WriteLine($"  {card.Type} ({card.Faction}) - State: {card.State}");
+        }
+
         _romeCardsCache = _board.Cards.Where(c => c.Faction == PlayerType.Rome &&
                                                    (c.State == CardState.InDeck ||
                                                     c.State == CardState.InHand ||
@@ -150,6 +167,9 @@ public class Game1 : Game
                                                        (c.State == CardState.InDeck ||
                                                         c.State == CardState.InHand ||
                                                         c.State == CardState.ReadyToPlay)).ToList();
+
+        System.Diagnostics.Debug.WriteLine($"Rome cards in cache: {_romeCardsCache.Count}");
+        System.Diagnostics.Debug.WriteLine($"Carthage cards in cache: {_carthageCardsCache.Count}");
         _cardCacheDirty = false;
     }
 
@@ -191,6 +211,8 @@ public class Game1 : Game
             _unitTextures["King-Red"] = Content.Load<Texture2D>("King - Red");
             _unitTextures["Cavalry-Blue"] = Content.Load<Texture2D>("Cavalry - Horse Infantry - Blue");
             _unitTextures["Cavalry-Red"] = Content.Load<Texture2D>("Cavalry - Horse Infantry - Red");
+            _unitTextures["Horse-Blue"] = Content.Load<Texture2D>("Cavalry - Horse Light - Blue");
+            _unitTextures["Horse-Red"] = Content.Load<Texture2D>("Cavalry - Horse Light - Red");
             _unitTextures["Infantry-Blue"] = Content.Load<Texture2D>("Melee - Infrantry - Blue");
             _unitTextures["Infantry-Red"] = Content.Load<Texture2D>("Melee - Infrantry - Red");
             _unitTextures["Pikes-Blue"] = Content.Load<Texture2D>("Melee - Pikes - Blue");
@@ -642,6 +664,18 @@ public class Game1 : Game
         System.Diagnostics.Debug.WriteLine($"Message: {e.Message}");
     }
 
+    private void OnCardStateChanged(object sender, EventArgs e)
+    {
+        // Mark card cache as dirty when any card changes state
+        _cardCacheDirty = true;
+
+        // Also log for debugging
+        if (sender is Card card)
+        {
+            System.Diagnostics.Debug.WriteLine($"Card state changed: {card.Type} ({card.Faction}) -> {card.State}");
+        }
+    }
+
     private void OnPlaySound(object sender, SoundEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine($"OnPlaySound called for: {e.Sound}");
@@ -1047,6 +1081,15 @@ public class Game1 : Game
             return $"Archer-{playerColor}";
         else if (unit is Spear)
             return $"Spear-{playerColor}";
+        else if (unit is Numidians)
+            return $"Horse-{playerColor}";
+        else if (unit is Equites)
+            return $"Cavalry-{playerColor}";
+        else if (unit is Velites)
+            return $"Spear-{playerColor}";
+        else if (unit is Phoenicians)
+            return $"Cavalry-{playerColor}";
+
 
         return $"Infantry-{playerColor}"; // Default
     }
@@ -1126,7 +1169,7 @@ public class Game1 : Game
             float deckY = isRome
                 ? _graphics.PreferredBackBufferHeight - PANEL_EXPANDED_HEIGHT + 20
                 : PANEL_EXPANDED_HEIGHT - CARD_HEIGHT - 20;
-            DrawCardGroup(deckCards, deckY, faction, CardState.InDeck);
+            DrawCardGroup(deckCards, deckY, faction);
         }
 
         // Draw hand cards (always visible, move out when panel expanded)
@@ -1147,7 +1190,7 @@ public class Game1 : Game
                     ? _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10
                     : PANEL_COLLAPSED_HEIGHT + 10;
             }
-            DrawCardGroup(handCards, handY, faction, CardState.InHand);
+            DrawCardGroup(handCards, handY, faction);
         }
     }
 
@@ -1201,7 +1244,7 @@ public class Game1 : Game
         DrawLine(_spriteBatch, _pixelTexture, p3, p1, Color.White, 2f);
     }
 
-    private void DrawCardGroup(List<Card> cards, float yPosition, PlayerType faction, CardState state)
+    private void DrawCardGroup(List<Card> cards, float yPosition, PlayerType faction)
     {
         if (cards.Count == 0) return;
 
@@ -1228,18 +1271,14 @@ public class Game1 : Game
             Color borderColor = Color.Gold;
             float borderThickness = 3f;
 
-            if (state == CardState.InHand && TurnManager.Instance.CurrentGamePhase != GamePhase.Select)
+            // Check if card is in ReadyToPlay state (green border)
+            var firstCard = group.Cards[0];
+            if (firstCard.State == CardState.ReadyToPlay && TurnManager.Instance.CurrentGamePhase != GamePhase.Select)
             {
-                // Check if card is ready to play based on timing
-                var firstCard = group.Cards[0];
-                if (firstCard.Faction == TurnManager.Instance.CurrentPlayer &&
-                    firstCard.Timing == TurnManager.Instance.CurrentTurnPhase)
-                {
-                    isHighlighted = true;
-                    isTimingMatch = true;
-                    borderColor = Color.LimeGreen;
-                    borderThickness = 5f;
-                }
+                isHighlighted = true;
+                isTimingMatch = true;
+                borderColor = Color.LimeGreen;
+                borderThickness = 5f;
             }
 
             if (TurnManager.Instance.SelectedCard != null && group.Cards.Contains(TurnManager.Instance.SelectedCard))
@@ -1312,6 +1351,15 @@ public class Game1 : Game
             else
             {
                 DrawSimpleText(_spriteBatch, cardText, textPosition, Color.White, 1.0f, (int)CARD_WIDTH - 10);
+            }
+
+            // Draw card state for debugging
+            string stateText = firstCard.State.ToString();
+            Vector2 statePosition = new Vector2(xPosition + topOffsetX + 5, yPosition + topOffsetY + 5);
+            Color stateColor = firstCard.State == CardState.ReadyToPlay ? Color.LimeGreen : Color.Yellow;
+            if (_font != null)
+            {
+                _spriteBatch.DrawString(_font, stateText, statePosition, stateColor, 0f, Vector2.Zero, 0.25f, SpriteEffects.None, 0f);
             }
 
             // Draw count if more than 1
@@ -1394,7 +1442,7 @@ public class Game1 : Game
         // Draw message text with word wrapping
         if (_font != null)
         {
-            float messageScale = 0.35f;
+            float messageScale = 0.5f;
             float maxWidth = MESSAGE_BOX_WIDTH - (MESSAGE_BOX_PADDING * 2);
             Vector2 messagePosition = new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + 45);
 
