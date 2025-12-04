@@ -42,26 +42,28 @@ public abstract class Card
 
     public void On_Update(object sender, EventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"On_Update: {this.Type} ({this.Faction}) - State: {this.State}, CurrentPlayer: {TurnManager.Instance.CurrentPlayer}, CurrentPhase: {TurnManager.Instance.CurrentTurnPhase}, Timing: {this.Timing}");
-
-        if (this.Faction == TurnManager.Instance.CurrentPlayer
-            && this.Timing == TurnManager.Instance.CurrentTurnPhase
-            && (this.State == CardState.InHand || this.State == CardState.ReadyToPlay))
-
+        // Only process cards that are in deck or hand (not already played/discarded)
+        if (this.State != CardState.InDeck &&
+            this.State != CardState.InHand &&
+            this.State != CardState.ReadyToPlay)
         {
-            System.Diagnostics.Debug.WriteLine($"  -> Setting {this.Type} to ReadyToPlay");
-            //this.State = CardState.ReadyToPlay;
-              ChangeCardState(CardState.ReadyToPlay);  //----> Triggers Form1's On_Update causing Blinking
+            return;
         }
 
+        // Check if card should be ready to play
+        bool shouldBeReady = (this.Faction == TurnManager.Instance.CurrentPlayer
+                           && this.Timing == TurnManager.Instance.CurrentTurnPhase
+                           && this.State == CardState.InHand);
 
-        else if (this.State == CardState.ReadyToPlay)
+        if (shouldBeReady && this.State != CardState.ReadyToPlay)
         {
-            System.Diagnostics.Debug.WriteLine($"  -> Setting {this.Type} back to InHand");
-            //this.State = CardState.InHand;
-              ChangeCardState(CardState.InHand);  //----> Triggers Form1's On_Update causing Blinking
+            ChangeCardState(CardState.ReadyToPlay);
         }
-
+        else if (!shouldBeReady && this.State == CardState.ReadyToPlay)
+        {
+            // Card is no longer ready - change back to InHand
+            ChangeCardState(CardState.InHand);
+        }
     }
 
 

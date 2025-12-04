@@ -131,6 +131,22 @@ public class Game1 : Game
             System.Diagnostics.Debug.WriteLine($"  Subscribed to {card.Type} ({card.Faction}) state changes");
         }
 
+        // CRITICAL: Ensure all cards are subscribed to turn phase AND player changes
+        System.Diagnostics.Debug.WriteLine($"========== GAME1: RE-SUBSCRIBING CARDS TO TURN EVENTS ==========");
+        foreach (var card in _board.Cards)
+        {
+            // Unsubscribe first to avoid duplicates, then resubscribe
+            TurnManager.Instance.ChangeTurnPhase -= card.On_Update;
+            TurnManager.Instance.ChangeTurnPhase += card.On_Update;
+            TurnManager.Instance.ChangePlayer -= card.On_Update;
+            TurnManager.Instance.ChangePlayer += card.On_Update;
+            System.Diagnostics.Debug.WriteLine($"  Resubscribed {card.Type} ({card.Faction}) to turn phase and player change events");
+        }
+
+        // Trigger initial card state update
+        System.Diagnostics.Debug.WriteLine($"========== GAME1: TRIGGERING INITIAL TURN PHASE UPDATE ==========");
+        TurnManager.Instance.AdvanceTurnPhase();
+
         // Initialize game state
         _gameState = new GameState(_board);
 
