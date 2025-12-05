@@ -1,7 +1,8 @@
 ﻿namespace BoLLogic;
 
-public abstract class Card
+public abstract class Card : IDisposable
 {
+    private bool _disposed = false;
 
     public abstract CardType Type { get; }
     public abstract PlayerType Faction { get; }
@@ -50,13 +51,14 @@ public abstract class Card
             return;
         }
 
-        // Check if card should be ready to play
+        // Check if card should be ready to play (based on player turn and phase)
         bool shouldBeReady = (this.Faction == TurnManager.Instance.CurrentPlayer
                            && this.Timing == TurnManager.Instance.CurrentTurnPhase
-                           && this.State == CardState.InHand);
+                           && (this.State == CardState.InHand || this.State == CardState.ReadyToPlay));
 
-        if (shouldBeReady && this.State != CardState.ReadyToPlay)
+        if (shouldBeReady && this.State == CardState.InHand)
         {
+            // Transition from InHand to ReadyToPlay
             ChangeCardState(CardState.ReadyToPlay);
         }
         else if (!shouldBeReady && this.State == CardState.ReadyToPlay)
@@ -100,14 +102,26 @@ public abstract class Card
 
             switch (this.State)
             {
-                case CardState.ReadyToPlay:              
-                    if(TurnManager.Instance.PlayCard(this)==true
-                        && IsDiscard==true)
+                case CardState.ReadyToPlay:
+                    if(TurnManager.Instance.PlayCard(this)==true)
+                    {
+                        // Card moves to center for resolution
+                        ChangeCardState(CardState.Resolving);
+                    }
+                    break;
+
+                case CardState.Resolving:
+                    // Click on resolving card to discard it
+                    if (IsDiscard)
                     {
                         TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, -1);
-                        ChangeCardState(CardState.Played);
-                        this.Position = playPosition; 
-                    }          
+                        ChangeCardState(CardState.Discarded);
+                    }
+                    else
+                    {
+                        // Non-discard cards go back to hand
+                        ChangeCardState(CardState.InHand);
+                    }
                     break;
             }
 
@@ -122,6 +136,27 @@ public abstract class Card
         this.State = state;
         System.Diagnostics.Debug.WriteLine($"*** CARD STATE CHANGED: {this.Type} ({this.Faction}) from {oldState} -> {state}");
         ChangeState?.Invoke(this, EventArgs.Empty);
+    }
+
+    // IDisposable implementation to clean up event subscriptions
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            // Unsubscribe from events to prevent memory leaks
+            TurnManager.Instance.ChangeTurnPhase -= On_Update;
+        }
+
+        _disposed = true;
     }
 
 }

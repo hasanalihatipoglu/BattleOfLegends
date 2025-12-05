@@ -1,7 +1,9 @@
 ﻿namespace BoLLogic;
 
-public abstract class Unit
+public abstract class Unit : IDisposable
 {
+    private bool _disposed = false;
+
     public abstract UnitType Type { get; }
     public abstract UnitClass Class { get; }
     public abstract PlayerType Faction { get; }
@@ -258,12 +260,20 @@ public abstract class Unit
     {
         if (e.Unit != this) return;
 
+        // Validate state transition before applying
+        if (!UnitStateValidator.IsValidTransition(State, e.State))
+        {
+            string error = UnitStateValidator.GetTransitionError(State, e.State);
+            MessageController.Instance.Show($"Invalid state transition for {this}: {error}");
+            return; // Reject invalid transition
+        }
+
         PreviousState = State;
-        
+
         State = e.State;
 
         switch (State)
-        {                   
+        {
             case UnitState.Retreating:
                 // Automatic retreat from combat - find and use first available path
                 PathFinder.Instance.FindPaths(this, this.Tile, PathType.Retreat);
@@ -278,8 +288,29 @@ public abstract class Unit
                     this.State = UnitState.Retreated;
                 }
                 PathFinder.Instance.Reset(PathType.Move);
-                break;            
+                break;
         }
+    }
+
+    // IDisposable implementation to clean up event subscriptions
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        if (disposing)
+        {
+            // Unsubscribe from events to prevent memory leaks
+            CombatManager.Instance.ChangeUnitState -= On_StateChanged;
+        }
+
+        _disposed = true;
     }
 
 }

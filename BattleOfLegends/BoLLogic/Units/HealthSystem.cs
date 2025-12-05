@@ -31,14 +31,23 @@ public class HealthSystem
 
     public void Die()
     {
-
         SoundController.Instance.PlaySound("break_glass");
-        //  ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Unit, UnitState.Dead));
-        Unit.State = UnitState.Dead;
-        Unit.Tile.Occupied = false;
-        Unit.Tile.Unit = null;
-        //   OnDead?.Invoke(this, new DeadEventArgs(Unit));
-      
+
+        // Use event system for state change instead of direct assignment
+        ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Unit, UnitState.Dead));
+
+        // Update tile state
+        if (Unit.Tile != null)
+        {
+            Unit.Tile.Occupied = false;
+            Unit.Tile.Unit = null;
+        }
+
+        // Trigger death event
+        OnDead?.Invoke(this, EventArgs.Empty);
+
+        // Clean up event subscriptions to prevent memory leaks
+        Unit.Dispose();
     }
 
     public int GetHealth()

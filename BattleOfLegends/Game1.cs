@@ -93,6 +93,14 @@ public class Game1 : Game
     // Debug display settings
     private bool _showUnitStates = true; // Toggle to show/hide unit states for testing
 
+    // Card resolution tracking
+    private Card _resolvingCard = null;
+    private Vector2 _resolvingCardStartPos;
+    private Vector2 _resolvingCardTargetPos;
+    private float _resolvingCardAnimProgress = 0f;
+    private const float CARD_ANIM_SPEED = 3.0f; // Animation speed
+    private const float RESOLVING_CARD_SCALE = 2.0f; // Scale factor for resolving card
+
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -114,7 +122,7 @@ public class Game1 : Game
         GameManager.Instance.LoadGame(scenarioPath);
 
         // Initialize board
-        System.Diagnostics.Debug.WriteLine("========== GAME1: CREATING BOARD ==========");
+         System.Diagnostics.Debug.WriteLine("========== GAME1: CREATING BOARD ==========");
         _board = new Board();
         _board.Initialize();
         System.Diagnostics.Debug.WriteLine($"========== GAME1: BOARD INITIALIZED WITH {_board.Cards.Count} CARDS ==========");
@@ -128,15 +136,15 @@ public class Game1 : Game
         SoundController.Instance.Play += OnPlaySound;
 
         // Subscribe to card state changes to update cache
-        System.Diagnostics.Debug.WriteLine($"========== GAME1: SUBSCRIBING TO {_board.Cards.Count} CARD STATE CHANGES ==========");
+      //  System.Diagnostics.Debug.WriteLine($"========== GAME1: SUBSCRIBING TO {_board.Cards.Count} CARD STATE CHANGES ==========");
         foreach (var card in _board.Cards)
         {
             card.ChangeState += OnCardStateChanged;
-            System.Diagnostics.Debug.WriteLine($"  Subscribed to {card.Type} ({card.Faction}) state changes");
+         //   System.Diagnostics.Debug.WriteLine($"  Subscribed to {card.Type} ({card.Faction}) state changes");
         }
 
         // CRITICAL: Ensure all cards are subscribed to turn phase AND player changes
-        System.Diagnostics.Debug.WriteLine($"========== GAME1: RE-SUBSCRIBING CARDS TO TURN EVENTS ==========");
+       // System.Diagnostics.Debug.WriteLine($"========== GAME1: RE-SUBSCRIBING CARDS TO TURN EVENTS ==========");
         foreach (var card in _board.Cards)
         {
             // Unsubscribe first to avoid duplicates, then resubscribe
@@ -144,11 +152,11 @@ public class Game1 : Game
             TurnManager.Instance.ChangeTurnPhase += card.On_Update;
             TurnManager.Instance.ChangePlayer -= card.On_Update;
             TurnManager.Instance.ChangePlayer += card.On_Update;
-            System.Diagnostics.Debug.WriteLine($"  Resubscribed {card.Type} ({card.Faction}) to turn phase and player change events");
+          //  System.Diagnostics.Debug.WriteLine($"  Resubscribed {card.Type} ({card.Faction}) to turn phase and player change events");
         }
 
         // Trigger initial card state update
-        System.Diagnostics.Debug.WriteLine($"========== GAME1: TRIGGERING INITIAL TURN PHASE UPDATE ==========");
+       // System.Diagnostics.Debug.WriteLine($"========== GAME1: TRIGGERING INITIAL TURN PHASE UPDATE ==========");
         TurnManager.Instance.AdvanceTurnPhase();
 
         // Initialize game state
@@ -172,11 +180,11 @@ public class Game1 : Game
             return;
         }
 
-        System.Diagnostics.Debug.WriteLine("========== UPDATING CARD CACHE ==========");
-        System.Diagnostics.Debug.WriteLine($"Total cards: {_board.Cards.Count}");
+      //  System.Diagnostics.Debug.WriteLine("========== UPDATING CARD CACHE ==========");
+      //  System.Diagnostics.Debug.WriteLine($"Total cards: {_board.Cards.Count}");
         foreach (var card in _board.Cards)
         {
-            System.Diagnostics.Debug.WriteLine($"  {card.Type} ({card.Faction}) - State: {card.State}");
+     //       System.Diagnostics.Debug.WriteLine($"  {card.Type} ({card.Faction}) - State: {card.State}");
         }
 
         _romeCardsCache = _board.Cards.Where(c => c.Faction == PlayerType.Rome &&
@@ -188,8 +196,8 @@ public class Game1 : Game
                                                         c.State == CardState.InHand ||
                                                         c.State == CardState.ReadyToPlay)).ToList();
 
-        System.Diagnostics.Debug.WriteLine($"Rome cards in cache: {_romeCardsCache.Count}");
-        System.Diagnostics.Debug.WriteLine($"Carthage cards in cache: {_carthageCardsCache.Count}");
+     //   System.Diagnostics.Debug.WriteLine($"Rome cards in cache: {_romeCardsCache.Count}");
+     //   System.Diagnostics.Debug.WriteLine($"Carthage cards in cache: {_carthageCardsCache.Count}");
         _cardCacheDirty = false;
     }
 
@@ -339,6 +347,16 @@ public class Game1 : Game
             UpdateCardCache();
         }
 
+        // Update resolving card animation
+        if (_resolvingCard != null && _resolvingCardAnimProgress < 1.0f)
+        {
+            _resolvingCardAnimProgress += (float)(gameTime.ElapsedGameTime.TotalSeconds * CARD_ANIM_SPEED);
+            if (_resolvingCardAnimProgress > 1.0f)
+            {
+                _resolvingCardAnimProgress = 1.0f;
+            }
+        }
+
         // Handle mouse input
         MouseState mouseState = Mouse.GetState();
 
@@ -420,6 +438,11 @@ public class Game1 : Game
             else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
             {
                 // Arrow button was clicked, don't process other clicks
+            }
+            // Check if clicking on resolving card first (highest priority)
+            else if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
+            {
+                // Resolving card was clicked to dismiss it
             }
             // Check if clicking on a card (screen space, not world space)
             else if (HandleCardClick(mouseState.X, mouseState.Y))
@@ -611,7 +634,7 @@ public class Game1 : Game
 
     private bool HandleCurrentPlayerTrackerClick(int mouseX, int mouseY)
     {
-        System.Diagnostics.Debug.WriteLine($"HandleCurrentPlayerTrackerClick called with mouse position: ({mouseX}, {mouseY})");
+     //   System.Diagnostics.Debug.WriteLine($"HandleCurrentPlayerTrackerClick called with mouse position: ({mouseX}, {mouseY})");
 
         // Get all turn phases to calculate where TurnPhase tracker ends
         var turnPhases = System.Enum.GetValues(typeof(TurnPhase)).Cast<TurnPhase>().Where(p => p != TurnPhase.None).ToArray();
@@ -629,13 +652,13 @@ public class Game1 : Game
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
-        System.Diagnostics.Debug.WriteLine($"Rome button bounds: {romeButton}");
+     //   System.Diagnostics.Debug.WriteLine($"Rome button bounds: {romeButton}");
 
         if (romeButton.Contains(mouseX, mouseY))
         {
-            System.Diagnostics.Debug.WriteLine($"Rome button clicked. Current player: {TurnManager.Instance.CurrentPlayer}");
+         //   System.Diagnostics.Debug.WriteLine($"Rome button clicked. Current player: {TurnManager.Instance.CurrentPlayer}");
             TurnManager.Instance.SetCurrentPlayer(PlayerType.Rome);
-            System.Diagnostics.Debug.WriteLine($"After SetCurrentPlayer. Current player: {TurnManager.Instance.CurrentPlayer}");
+         //   System.Diagnostics.Debug.WriteLine($"After SetCurrentPlayer. Current player: {TurnManager.Instance.CurrentPlayer}");
             return true;
         }
 
@@ -646,13 +669,13 @@ public class Game1 : Game
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
-        System.Diagnostics.Debug.WriteLine($"Carthage button bounds: {carthageButton}");
+       // System.Diagnostics.Debug.WriteLine($"Carthage button bounds: {carthageButton}");
 
         if (carthageButton.Contains(mouseX, mouseY))
         {
-            System.Diagnostics.Debug.WriteLine($"Carthage button clicked. Current player: {TurnManager.Instance.CurrentPlayer}");
+         //   System.Diagnostics.Debug.WriteLine($"Carthage button clicked. Current player: {TurnManager.Instance.CurrentPlayer}");
             TurnManager.Instance.SetCurrentPlayer(PlayerType.Carthage);
-            System.Diagnostics.Debug.WriteLine($"After SetCurrentPlayer. Current player: {TurnManager.Instance.CurrentPlayer}");
+          //  System.Diagnostics.Debug.WriteLine($"After SetCurrentPlayer. Current player: {TurnManager.Instance.CurrentPlayer}");
             return true;
         }
 
@@ -703,12 +726,70 @@ public class Game1 : Game
         if (sender is Card card)
         {
             System.Diagnostics.Debug.WriteLine($"Card state changed: {card.Type} ({card.Faction}) -> {card.State}");
+
+            // Handle card going into Resolving state
+            if (card.State == CardState.Resolving)
+            {
+                StartCardResolution(card);
+            }
+            // Handle card leaving Resolving state
+            else if (_resolvingCard == card && card.State != CardState.Resolving)
+            {
+                _resolvingCard = null;
+                _resolvingCardAnimProgress = 0f;
+            }
         }
+    }
+
+    private void StartCardResolution(Card card)
+    {
+        _resolvingCard = card;
+        _resolvingCardAnimProgress = 0f;
+
+        // Calculate start position (current card position in hand)
+        // For now, we'll animate from bottom center as we don't track exact positions
+        _resolvingCardStartPos = new Vector2(
+            _graphics.PreferredBackBufferWidth / 2,
+            card.Faction == PlayerType.Rome
+                ? _graphics.PreferredBackBufferHeight - CARD_HEIGHT / 2
+                : CARD_HEIGHT / 2
+        );
+
+        // Target position is screen center
+        _resolvingCardTargetPos = new Vector2(
+            _graphics.PreferredBackBufferWidth / 2,
+            _graphics.PreferredBackBufferHeight / 2
+        );
+    }
+
+    private bool HandleResolvingCardClick(int mouseX, int mouseY)
+    {
+        if (_resolvingCard == null || _resolvingCardAnimProgress < 1.0f)
+            return false; // Can only click once animation is complete
+
+        // Calculate current card bounds at center of screen
+        float scaledWidth = CARD_WIDTH * RESOLVING_CARD_SCALE;
+        float scaledHeight = CARD_HEIGHT * RESOLVING_CARD_SCALE;
+        Rectangle cardBounds = new Rectangle(
+            (int)(_graphics.PreferredBackBufferWidth / 2 - scaledWidth / 2),
+            (int)(_graphics.PreferredBackBufferHeight / 2 - scaledHeight / 2),
+            (int)scaledWidth,
+            (int)scaledHeight
+        );
+
+        if (cardBounds.Contains(mouseX, mouseY))
+        {
+            // Click the card to dismiss it
+            _resolvingCard.OnClick();
+            return true;
+        }
+
+        return false;
     }
 
     private void OnPlaySound(object sender, SoundEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine($"OnPlaySound called for: {e.Sound}");
+      //  System.Diagnostics.Debug.WriteLine($"OnPlaySound called for: {e.Sound}");
 
         // Play the requested sound effect
         if (_soundEffects != null && _soundEffects.ContainsKey(e.Sound))
@@ -716,17 +797,17 @@ public class Game1 : Game
             try
             {
                 _soundEffects[e.Sound].Play();
-                System.Diagnostics.Debug.WriteLine($"Successfully played: {e.Sound}");
+              //  System.Diagnostics.Debug.WriteLine($"Successfully played: {e.Sound}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error playing sound {e.Sound}: {ex.Message}");
+               // System.Diagnostics.Debug.WriteLine($"Error playing sound {e.Sound}: {ex.Message}");
             }
         }
         else
         {
             var availableSounds = _soundEffects != null ? string.Join(", ", _soundEffects.Keys) : "none";
-            System.Diagnostics.Debug.WriteLine($"Sound not found: {e.Sound}. Available sounds: {availableSounds}");
+            //System.Diagnostics.Debug.WriteLine($"Sound not found: {e.Sound}. Available sounds: {availableSounds}");
         }
     }
 
@@ -745,7 +826,7 @@ public class Game1 : Game
         if (romeArrowButton.Contains(mouseX, mouseY))
         {
             _romePanelExpanded = !_romePanelExpanded;
-            System.Diagnostics.Debug.WriteLine($"Rome panel toggled: {(_romePanelExpanded ? "expanded" : "collapsed")}");
+           // System.Diagnostics.Debug.WriteLine($"Rome panel toggled: {(_romePanelExpanded ? "expanded" : "collapsed")}");
             return true;
         }
 
@@ -761,7 +842,7 @@ public class Game1 : Game
         if (carthageArrowButton.Contains(mouseX, mouseY))
         {
             _carthagePanelExpanded = !_carthagePanelExpanded;
-            System.Diagnostics.Debug.WriteLine($"Carthage panel toggled: {(_carthagePanelExpanded ? "expanded" : "collapsed")}");
+           // System.Diagnostics.Debug.WriteLine($"Carthage panel toggled: {(_carthagePanelExpanded ? "expanded" : "collapsed")}");
             return true;
         }
 
@@ -825,9 +906,9 @@ public class Game1 : Game
     {
         if (cards.Count == 0) return false;
 
-        // Separate cards by state: InDeck vs InHand
+        // Separate cards by state: InDeck vs InHand/ReadyToPlay
         var deckCards = cards.Where(c => c.State == CardState.InDeck).ToList();
-        var handCards = cards.Where(c => c.State == CardState.InHand).ToList();
+        var handCards = cards.Where(c => c.State == CardState.InHand || c.State == CardState.ReadyToPlay).ToList();
 
         // Determine if panel is expanded
         bool panelExpanded = (faction == PlayerType.Rome) ? _romePanelExpanded : _carthagePanelExpanded;
@@ -1000,7 +1081,7 @@ public class Game1 : Game
                             if (_showUnitStates && _font != null)
                             {
                                 string stateText = tile.Unit.State.ToString();
-                                float stateScale = 0.2f;
+                                float stateScale = 0.3f;
                                 Vector2 textSize = _font.MeasureString(stateText) * stateScale;
                                 Vector2 statePosition = new Vector2(
                                     centerX - textSize.X / 2,
@@ -1114,6 +1195,12 @@ public class Game1 : Game
         DrawRollButton(_totalElapsedSeconds);
         DrawCards();
 
+        // Draw resolving card (on top of everything except message box)
+        if (_resolvingCard != null)
+        {
+            DrawResolvingCard();
+        }
+
         // Draw message box on top of everything if there's a message
         if (_currentMessage != null)
         {
@@ -1201,6 +1288,78 @@ public class Game1 : Game
         DrawCardPanel(PlayerType.Carthage, _carthagePanelExpanded, _carthageCardsCache);
     }
 
+    private void DrawResolvingCard()
+    {
+        if (_resolvingCard == null) return;
+
+        // Lerp position from start to target based on animation progress
+        Vector2 currentPos = Vector2.Lerp(_resolvingCardStartPos, _resolvingCardTargetPos, _resolvingCardAnimProgress);
+
+        // Draw semi-transparent background overlay
+        Rectangle fullScreen = new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
+        _spriteBatch.Draw(_pixelTexture, fullScreen, new Color(0, 0, 0, 180));
+
+        // Calculate card rectangle (centered at current position)
+        float scaledWidth = CARD_WIDTH * RESOLVING_CARD_SCALE;
+        float scaledHeight = CARD_HEIGHT * RESOLVING_CARD_SCALE;
+        Rectangle cardRect = new Rectangle(
+            (int)(currentPos.X - scaledWidth / 2),
+            (int)(currentPos.Y - scaledHeight / 2),
+            (int)scaledWidth,
+            (int)scaledHeight
+        );
+
+        // Draw card texture or placeholder
+        string cardKey = _resolvingCard.Type.ToString();
+        if (_cardTextures.ContainsKey(cardKey))
+        {
+            _spriteBatch.Draw(_cardTextures[cardKey], cardRect, Color.White);
+        }
+        else if (_cardBackTexture != null)
+        {
+            _spriteBatch.Draw(_cardBackTexture, cardRect, Color.White);
+        }
+        else
+        {
+            _spriteBatch.Draw(_pixelTexture, cardRect, GetCardColor(_resolvingCard.Faction));
+        }
+
+        // Draw glowing border
+        DrawRectangle(_spriteBatch, _pixelTexture, cardRect, Color.Gold, 5f);
+
+        // Draw card name
+        if (_font != null)
+        {
+            string cardText = _resolvingCard.Type.ToString();
+            cardText = System.Text.RegularExpressions.Regex.Replace(cardText, "([a-z])([A-Z])", "$1 $2");
+
+            float textScale = 0.8f;
+            Vector2 textSize = _font.MeasureString(cardText) * textScale;
+            Vector2 textPosition = new Vector2(
+                currentPos.X - textSize.X / 2,
+                cardRect.Bottom + 20
+            );
+
+            _spriteBatch.DrawString(_font, cardText, textPosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
+        }
+
+        // Show "Click to dismiss" hint if animation is complete
+        if (_resolvingCardAnimProgress >= 1.0f && _font != null)
+        {
+            string hintText = "Click to dismiss";
+            float hintScale = 0.4f;
+            Vector2 hintSize = _font.MeasureString(hintText) * hintScale;
+            Vector2 hintPosition = new Vector2(
+                currentPos.X - hintSize.X / 2,
+                cardRect.Top - 30
+            );
+
+            // Pulsing effect
+            float pulse = (float)Math.Sin(_totalElapsedSeconds * 3.0) * 0.2f + 0.8f;
+            _spriteBatch.DrawString(_font, hintText, hintPosition, Color.Yellow * pulse, 0f, Vector2.Zero, hintScale, SpriteEffects.None, 0f);
+        }
+    }
+
     private void DrawCardPanel(PlayerType faction, bool isExpanded, List<Card> cards)
     {
         bool isRome = (faction == PlayerType.Rome);
@@ -1222,7 +1381,7 @@ public class Game1 : Game
 
         // Separate cards by state
         var deckCards = cards.Where(c => c.State == CardState.InDeck).ToList();
-        var handCards = cards.Where(c => c.State == CardState.InHand).ToList();
+        var handCards = cards.Where(c => c.State == CardState.InHand || c.State == CardState.ReadyToPlay).ToList();
 
         // Draw deck cards (only when expanded)
         if (isExpanded && deckCards.Count > 0)

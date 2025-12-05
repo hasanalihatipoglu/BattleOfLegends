@@ -32,23 +32,23 @@ public class Board
 
     public void Initialize()
     {
-        System.Diagnostics.Debug.WriteLine("========== BOARD INITIALIZATION STARTED ==========");
+        // System.Diagnostics.Debug.WriteLine("========== BOARD INITIALIZATION STARTED ==========");
         AddPlayers();
         SetFirstPlayer();
         AddPositions();
         AddTiles();
         AddUnits();
         AddCards();
-        System.Diagnostics.Debug.WriteLine($"========== ADDED {Cards.Count} CARDS ==========");
+        // System.Diagnostics.Debug.WriteLine($"========== ADDED {Cards.Count} CARDS ==========");
         SetTiles();
         SetLeaders();
         SetRound();
         SetPhases();
 
         // Trigger initial turn phase event to update card states
-        System.Diagnostics.Debug.WriteLine("========== TRIGGERING AdvanceTurnPhase ==========");
+        // System.Diagnostics.Debug.WriteLine("========== TRIGGERING AdvanceTurnPhase ==========");
         TurnManager.Instance.AdvanceTurnPhase();
-        System.Diagnostics.Debug.WriteLine("========== BOARD INITIALIZATION COMPLETE ==========");
+        // System.Diagnostics.Debug.WriteLine("========== BOARD INITIALIZATION COMPLETE ==========");
     }
 
 
@@ -58,7 +58,7 @@ public class Board
         {
             if (!Enum.TryParse(player.Faction, out PlayerType playerType))
             {
-                System.Diagnostics.Debug.WriteLine($"Invalid faction: {player.Faction}");
+                // System.Diagnostics.Debug.WriteLine($"Invalid faction: {player.Faction}");
                 continue;
             }
 
@@ -83,7 +83,7 @@ public class Board
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine($"Invalid first player faction: {GameManager.Instance.CurrentPlayer}");
+            // System.Diagnostics.Debug.WriteLine($"Invalid first player faction: {GameManager.Instance.CurrentPlayer}");
         }
     }
 
@@ -115,7 +115,7 @@ public class Board
                 Type type = Type.GetType(fullTypeName);
                 if (type == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Tile class not found: {fullTypeName}, defaulting to Grass");
+                    // System.Diagnostics.Debug.WriteLine($"Tile class not found: {fullTypeName}, defaulting to Grass");
                     type = typeof(Grass);
                 }
 
@@ -129,12 +129,12 @@ public class Board
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Could not instantiate tile: {tileTypeName}");
+                        // System.Diagnostics.Debug.WriteLine($"Could not instantiate tile: {tileTypeName}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error creating tile '{tileTypeName}': {ex.Message}");
+                    // System.Diagnostics.Debug.WriteLine($"Error creating tile '{tileTypeName}': {ex.Message}");
                 }
             }
         }
@@ -199,19 +199,19 @@ public class Board
 
                 if (!Enum.TryParse(faction, out PlayerType playerType))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Invalid faction: {faction}");
+                    // System.Diagnostics.Debug.WriteLine($"Invalid faction: {faction}");
                     continue;
                 }
 
                 if (!Enum.TryParse(unitState, out UnitState state))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Invalid unit state: {unitState}");
+                    // System.Diagnostics.Debug.WriteLine($"Invalid unit state: {unitState}");
                     continue;
                 }
 
                 if (!Int32.TryParse(unitHealth, out int health))
                 {
-                    System.Diagnostics.Debug.WriteLine($"Invalid unit health: {unitHealth}");
+                    // System.Diagnostics.Debug.WriteLine($"Invalid unit health: {unitHealth}");
                     continue;
                 }
 
@@ -220,7 +220,7 @@ public class Board
                 Type type = Type.GetType(fullTypeName);
                 if (type == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Unit class not found: {fullTypeName}");
+                    // System.Diagnostics.Debug.WriteLine($"Unit class not found: {fullTypeName}");
                     continue;
                 }
 
@@ -241,12 +241,12 @@ public class Board
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"Failed to create unit: {unitTypeName}");
+                        // System.Diagnostics.Debug.WriteLine($"Failed to create unit: {unitTypeName}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Error creating unit '{unitTypeName}': {ex.Message}");
+                    // System.Diagnostics.Debug.WriteLine($"Error creating unit '{unitTypeName}': {ex.Message}");
                 }
             }
         }
@@ -259,13 +259,13 @@ public class Board
         {
             if (!Enum.TryParse(faction, out PlayerType playerType))
             {
-                System.Diagnostics.Debug.WriteLine($"Invalid faction: {faction}");
+                // System.Diagnostics.Debug.WriteLine($"Invalid faction: {faction}");
                 continue;
             }
 
             if (!Enum.TryParse(cardState, out CardState state))
             {
-                System.Diagnostics.Debug.WriteLine($"Invalid faction: {cardState}");
+                // System.Diagnostics.Debug.WriteLine($"Invalid faction: {cardState}");
                 continue;
             }
 
@@ -275,7 +275,7 @@ public class Board
             Type type = Type.GetType(fullTypeName);
             if (type == null)
             {
-                System.Diagnostics.Debug.WriteLine($"Card class not found: {fullTypeName}");
+                // System.Diagnostics.Debug.WriteLine($"Card class not found: {fullTypeName}");
                 continue;
             }
 
@@ -289,17 +289,18 @@ public class Board
 
                     // Subscribe to turn phase changes to update card playability
                     TurnManager.Instance.ChangeTurnPhase += instance.On_Update;
-                    System.Diagnostics.Debug.WriteLine($"Subscribed card: {instance.Type} ({instance.Faction}) with state {instance.State}");
+                    // System.Diagnostics.Debug.WriteLine($"Subscribed card: {instance.Type} ({instance.Faction}) with state {instance.State}");
 
                     Cards.Add(instance);
                 }
 
                 else
-                    System.Diagnostics.Debug.WriteLine($"Failed to create card: {cardName}");
+                    // System.Diagnostics.Debug.WriteLine($"Failed to create card: {cardName}");
+                    ;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Error creating card '{cardName}': {ex.Message}");
+                // System.Diagnostics.Debug.WriteLine($"Error creating card '{cardName}': {ex.Message}");
             }
         }
     }

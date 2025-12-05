@@ -18,7 +18,9 @@
       "Bash(where /r . nul 2)",
       "Bash($null)",
       "Bash(tree:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nAdd optional unit state display for testing\n\n- Added debug flag _showUnitStates (default: true) to toggle unit state display\n- Unit states are now rendered below each unit with color coding:\n  - Idle: White\n  - Active: Lime Green\n  - Moved/Marched: Gray/Dark Gray\n  - Attacked: Red\n  - Retreating: Yellow\n  - Retreated: Orange\n  - Advancing: Cyan\n  - Advanced: Light Blue\n  - Attacking: Dark Red\n  - Defending: Blue\n  - Dead: Black\n- Added keyboard toggle with ''D'' key to show/hide unit states during gameplay\n- Displays message when toggling: \"Unit state display: ON/OFF\"\n\nThis feature helps with testing and debugging unit state transitions,\nespecially for verifying retreat resolution and combat mechanics.\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push)"
     ],
     "deny": [],
     "ask": []

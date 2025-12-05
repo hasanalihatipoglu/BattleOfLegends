@@ -128,6 +128,14 @@ public sealed class CombatManager
                 MessageController.Instance.Show("Attacker or target is missing!");
                 return;
             }
+
+            // Validate combat state - check for stale references
+            if (!ValidateCombatState())
+            {
+                MessageController.Instance.Show("Combat state is invalid - units may have moved or died!");
+                ClearCombat(type);
+                return;
+            }
         }
 
 
@@ -161,6 +169,47 @@ public sealed class CombatManager
         if (Target == null)
         {
             MessageController.Instance.Show("No target!");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Validates that combat state is still valid (units haven't died/moved)
+    /// </summary>
+    bool ValidateCombatState()
+    {
+        // Check attacker is alive and at expected position
+        if (Attacker == null || Attacker.State == UnitState.Dead)
+        {
+            return false;
+        }
+
+        // Check target is alive and at expected position
+        if (Target == null || Target.State == UnitState.Dead)
+        {
+            return false;
+        }
+
+        // Check units are still at the positions in the attack path
+        if (OriginalAttackPath?.TilesInPath == null || OriginalAttackPath.TilesInPath.Count < 2)
+        {
+            return false;
+        }
+
+        var attackerTile = OriginalAttackPath.TilesInPath.First();
+        var targetTile = OriginalAttackPath.TilesInPath.Last();
+
+        // Verify attacker is still at the starting position
+        if (attackerTile.Unit != Attacker)
+        {
+            return false;
+        }
+
+        // Verify target is still at the target position
+        if (targetTile.Unit != Target)
+        {
             return false;
         }
 
@@ -205,6 +254,9 @@ public sealed class CombatManager
 
     int DetermineHits()
     {
+        // Null check for Attacker
+        if (Attacker == null)
+            return 0;
 
         int attackPoint;
 
@@ -212,15 +264,18 @@ public sealed class CombatManager
         {
             attackPoint = Attacker.MeleeAttackPoint;
 
-            //LEADERSHIP SKILL
-            foreach (Tile tile in Attacker.Tile.Adjacents)
+            //LEADERSHIP SKILL - null check for Tile
+            if (Attacker.Tile != null)
             {
-                if (tile != null
-                    && tile.Unit != null
-                    && tile.Unit.Faction == Attacker.Faction
-                    && tile.Unit.Type == UnitType.Leader)
+                foreach (Tile tile in Attacker.Tile.Adjacents)
                 {
-                    attackPoint--;
+                    if (tile != null
+                        && tile.Unit != null
+                        && tile.Unit.Faction == Attacker.Faction
+                        && tile.Unit.Type == UnitType.Leader)
+                    {
+                        attackPoint--;
+                    }
                 }
             }
         }
@@ -280,7 +335,9 @@ public sealed class CombatManager
 
     int DetermineRetreats()
     {
-
+        // Null check for Target
+        if (Target == null)
+            return 0;
 
         int defensePoint;
 
@@ -302,16 +359,19 @@ public sealed class CombatManager
         }
 
 
-        //LEADERSHIP SKILL
-        foreach (Tile tile in Target.Tile.Adjacents)
+        //LEADERSHIP SKILL - null check for Tile
+        if (Target.Tile != null)
         {
-            if (tile!=null
-                && tile.Unit != null
-                && tile.Unit.Faction == Target.Faction
-                && tile.Unit.Type == UnitType.Leader
-                && NumberOfRetreats > 0)
+            foreach (Tile tile in Target.Tile.Adjacents)
             {
-                NumberOfRetreats--;
+                if (tile != null
+                    && tile.Unit != null
+                    && tile.Unit.Faction == Target.Faction
+                    && tile.Unit.Type == UnitType.Leader
+                    && NumberOfRetreats > 0)
+                {
+                    NumberOfRetreats--;
+                }
             }
         }
 
@@ -362,10 +422,15 @@ public sealed class CombatManager
 
     public void CheckAdvance()
     {
-            if (OriginalAttackPath.TilesInPath.Last().Unit == null && CurrentCombatType == CombatType.Melee)
+            // Add null check for OriginalAttackPath
+            if (OriginalAttackPath?.TilesInPath != null &&
+                OriginalAttackPath.TilesInPath.Count > 0 &&
+                OriginalAttackPath.TilesInPath.Last().Unit == null &&
+                CurrentCombatType == CombatType.Melee &&
+                Attacker != null)
             {
                 ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Attacker, UnitState.Advancing));
-            }      
+            }
     }
 
 
