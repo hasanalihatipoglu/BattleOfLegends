@@ -64,7 +64,8 @@ public class Game1 : Game
     private const float PANEL_COLLAPSED_HEIGHT = 40f; // Height when collapsed (showing arrow button)
     private const float PANEL_EXPANDED_HEIGHT = 200f; // Height when expanded (showing all cards)
     private const float ARROW_BUTTON_SIZE = 30f;
-    private const float CARD_PANEL_OFFSET = 50f; // Distance cards move out of panel when selected for hand
+    private const float CARD_PANEL_OFFSET_ROME = 140f; // Distance Rome hand cards move up when deck expanded
+    private const float CARD_PANEL_OFFSET_CARTHAGE = 50f; // Distance Carthage hand cards move down when deck expanded
 
     // Panel state tracking
     private bool _romePanelExpanded = false;
@@ -110,6 +111,9 @@ public class Game1 : Game
         // Set window size
         _graphics.PreferredBackBufferWidth = 1400;
         _graphics.PreferredBackBufferHeight = 900;
+
+        // Allow window to be maximized by user
+        Window.AllowUserResizing = true;
     }
 
     protected override void Initialize()
@@ -214,8 +218,8 @@ public class Game1 : Game
 
         // Set camera position to center the board in the viewport
         _cameraPosition = new Vector2(
-            centerX - (_graphics.PreferredBackBufferWidth / 2f / _zoomLevel),
-            centerY - (_graphics.PreferredBackBufferHeight / 2f / _zoomLevel)
+            centerX - (GraphicsDevice.Viewport.Width / 2f / _zoomLevel),
+            centerY - (GraphicsDevice.Viewport.Height / 2f / _zoomLevel)
         );
     }
 
@@ -501,7 +505,7 @@ public class Game1 : Game
 
         // Calculate vertical tracker position (right side of screen)
         float startY = 200;
-        float trackerX = _graphics.PreferredBackBufferWidth - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
+        float trackerX = GraphicsDevice.Viewport.Width - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
 
         // Check up button (at top)
         Rectangle upButton = new Rectangle(
@@ -685,8 +689,8 @@ public class Game1 : Game
     private bool HandleRollButtonClick(int mouseX, int mouseY)
     {
         // Calculate Roll button position (center bottom of screen, above Rome cards)
-        float buttonX = (_graphics.PreferredBackBufferWidth - ROLL_BUTTON_WIDTH) / 2;
-        float buttonY = _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y - ROLL_BUTTON_HEIGHT - 20;
+        float buttonX = (GraphicsDevice.Viewport.Width - ROLL_BUTTON_WIDTH) / 2;
+        float buttonY = GraphicsDevice.Viewport.Height - CARD_HEIGHT - CARD_HAND_Y - ROLL_BUTTON_HEIGHT - 20;
 
         Rectangle rollButton = new Rectangle(
             (int)buttonX,
@@ -749,16 +753,16 @@ public class Game1 : Game
         // Calculate start position (current card position in hand)
         // For now, we'll animate from bottom center as we don't track exact positions
         _resolvingCardStartPos = new Vector2(
-            _graphics.PreferredBackBufferWidth / 2,
+            GraphicsDevice.Viewport.Width / 2,
             card.Faction == PlayerType.Rome
-                ? _graphics.PreferredBackBufferHeight - CARD_HEIGHT / 2
+                ? GraphicsDevice.Viewport.Height - CARD_HEIGHT / 2
                 : CARD_HEIGHT / 2
         );
 
         // Target position is screen center
         _resolvingCardTargetPos = new Vector2(
-            _graphics.PreferredBackBufferWidth / 2,
-            _graphics.PreferredBackBufferHeight / 2
+            GraphicsDevice.Viewport.Width / 2,
+            GraphicsDevice.Viewport.Height / 2
         );
     }
 
@@ -771,8 +775,8 @@ public class Game1 : Game
         float scaledWidth = CARD_WIDTH * RESOLVING_CARD_SCALE;
         float scaledHeight = CARD_HEIGHT * RESOLVING_CARD_SCALE;
         Rectangle cardBounds = new Rectangle(
-            (int)(_graphics.PreferredBackBufferWidth / 2 - scaledWidth / 2),
-            (int)(_graphics.PreferredBackBufferHeight / 2 - scaledHeight / 2),
+            (int)(GraphicsDevice.Viewport.Width / 2 - scaledWidth / 2),
+            (int)(GraphicsDevice.Viewport.Height / 2 - scaledHeight / 2),
             (int)scaledWidth,
             (int)scaledHeight
         );
@@ -814,8 +818,8 @@ public class Game1 : Game
     private bool HandleArrowButtonClick(int mouseX, int mouseY)
     {
         // Rome panel arrow button (bottom of screen)
-        float romeArrowY = _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2;
-        float arrowX = (_graphics.PreferredBackBufferWidth - ARROW_BUTTON_SIZE) / 2;
+        float romeArrowY = GraphicsDevice.Viewport.Height - PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2;
+        float arrowX = (GraphicsDevice.Viewport.Width - ARROW_BUTTON_SIZE) / 2;
 
         Rectangle romeArrowButton = new Rectangle(
             (int)arrowX,
@@ -878,12 +882,12 @@ public class Game1 : Game
         if (_romePanelExpanded)
         {
             // Panel is expanded - cards are inside the panel
-            return _graphics.PreferredBackBufferHeight - PANEL_EXPANDED_HEIGHT + 20;
+            return GraphicsDevice.Viewport.Height - PANEL_EXPANDED_HEIGHT + 20;
         }
         else
         {
             // Panel is collapsed - just below the collapsed panel
-            return _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10;
+            return GraphicsDevice.Viewport.Height - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10;
         }
     }
 
@@ -925,13 +929,30 @@ public class Game1 : Game
         // Check hand cards (always visible, positioned based on panel state)
         if (handCards.Count > 0)
         {
-            float handY = yPosition;
+            float handY;
             if (panelExpanded)
             {
-                // Hand cards move out of panel by CARD_PANEL_OFFSET
+                // Hand cards move out of panel by offset
+                // For Rome: start from bottom of screen, subtract panel height, then subtract offset
+                // For Carthage: start from panel height, then add offset
+                if (faction == PlayerType.Rome)
+                {
+                    float panelY = GraphicsDevice.Viewport.Height - PANEL_EXPANDED_HEIGHT;
+                    handY = panelY - CARD_PANEL_OFFSET_ROME;
+                }
+                else
+                {
+                    float panelY = 0;
+                    float panelHeight = PANEL_EXPANDED_HEIGHT;
+                    handY = panelY + panelHeight + CARD_PANEL_OFFSET_CARTHAGE;
+                }
+            }
+            else
+            {
+                // When collapsed, use the position based on faction
                 handY = (faction == PlayerType.Rome)
-                    ? yPosition - CARD_PANEL_OFFSET
-                    : yPosition + CARD_PANEL_OFFSET;
+                    ? GraphicsDevice.Viewport.Height - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10
+                    : PANEL_COLLAPSED_HEIGHT + 10;
             }
 
             if (CheckCardGroupClick(handCards, mouseX, mouseY, handY))
@@ -954,7 +975,7 @@ public class Game1 : Game
 
         // Calculate card positions
         float totalWidth = (groupedCards.Count * CARD_WIDTH) + ((groupedCards.Count - 1) * CARD_SPACING);
-        float startX = (_graphics.PreferredBackBufferWidth - totalWidth) / 2;
+        float startX = (GraphicsDevice.Viewport.Width - totalWidth) / 2;
 
         for (int i = 0; i < groupedCards.Count; i++)
         {
@@ -995,8 +1016,8 @@ public class Game1 : Game
         if (_backgroundTexture != null)
         {
             // Calculate background size to cover viewport with some padding
-            float bgWidth = _graphics.PreferredBackBufferWidth / _zoomLevel + 500;
-            float bgHeight = _graphics.PreferredBackBufferHeight / _zoomLevel + 500;
+            float bgWidth = GraphicsDevice.Viewport.Width / _zoomLevel + 500;
+            float bgHeight = GraphicsDevice.Viewport.Height / _zoomLevel + 500;
             var bgRect = new Rectangle(
                 (int)(_cameraPosition.X - 250),
                 (int)(_cameraPosition.Y - 250),
@@ -1006,8 +1027,8 @@ public class Game1 : Game
         }
 
         // Draw hex grid
-        float viewWidth = _graphics.PreferredBackBufferWidth / _zoomLevel;
-        float viewHeight = _graphics.PreferredBackBufferHeight / _zoomLevel;
+        float viewWidth = GraphicsDevice.Viewport.Width / _zoomLevel;
+        float viewHeight = GraphicsDevice.Viewport.Height / _zoomLevel;
         _grid.DrawHexGrid(_spriteBatch, _pixelTexture, Color.Black,
             _cameraPosition.X, _cameraPosition.X + viewWidth,
             _cameraPosition.Y, _cameraPosition.Y + viewHeight);
@@ -1087,23 +1108,8 @@ public class Game1 : Game
                                     centerX - textSize.X / 2,
                                     centerY + unitHeight / 2 + 5);
 
-                                // Choose color based on state
-                                Color stateColor = tile.Unit.State switch
-                                {
-                                    UnitState.Idle => Color.White,
-                                    UnitState.Active => Color.LimeGreen,
-                                    UnitState.Moved => Color.Gray,
-                                    UnitState.Marched => Color.DarkGray,
-                                    UnitState.Attacked => Color.Red,
-                                    UnitState.Retreating => Color.Yellow,
-                                    UnitState.Retreated => Color.Orange,
-                                    UnitState.Advancing => Color.Cyan,
-                                    UnitState.Advanced => Color.LightBlue,
-                                    UnitState.Attacking => Color.DarkRed,
-                                    UnitState.Defending => Color.Blue,
-                                    UnitState.Dead => Color.Black,
-                                    _ => Color.White
-                                };
+                                // All unit states displayed in black font
+                                Color stateColor = Color.Black;
 
                                 _spriteBatch.DrawString(_font, stateText, statePosition, stateColor, 0f, Vector2.Zero, stateScale, SpriteEffects.None, 0f);
                             }
@@ -1296,7 +1302,7 @@ public class Game1 : Game
         Vector2 currentPos = Vector2.Lerp(_resolvingCardStartPos, _resolvingCardTargetPos, _resolvingCardAnimProgress);
 
         // Draw semi-transparent background overlay
-        Rectangle fullScreen = new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
+        Rectangle fullScreen = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
         _spriteBatch.Draw(_pixelTexture, fullScreen, new Color(0, 0, 0, 180));
 
         // Calculate card rectangle (centered at current position)
@@ -1367,11 +1373,11 @@ public class Game1 : Game
 
         // Calculate panel position
         float panelY = isRome
-            ? _graphics.PreferredBackBufferHeight - panelHeight
+            ? GraphicsDevice.Viewport.Height - panelHeight
             : 0;
 
         // Draw panel background
-        Rectangle panelRect = new Rectangle(0, (int)panelY, _graphics.PreferredBackBufferWidth, (int)panelHeight);
+        Rectangle panelRect = new Rectangle(0, (int)panelY, GraphicsDevice.Viewport.Width, (int)panelHeight);
         Color panelColor = isRome ? new Color(150, 100, 100, 200) : new Color(100, 100, 150, 200);
         _spriteBatch.Draw(_pixelTexture, panelRect, panelColor);
         DrawRectangle(_spriteBatch, _pixelTexture, panelRect, Color.Gray, 2f);
@@ -1387,7 +1393,7 @@ public class Game1 : Game
         if (isExpanded && deckCards.Count > 0)
         {
             float deckY = isRome
-                ? _graphics.PreferredBackBufferHeight - PANEL_EXPANDED_HEIGHT + 20
+                ? GraphicsDevice.Viewport.Height - PANEL_EXPANDED_HEIGHT + 20
                 : PANEL_EXPANDED_HEIGHT - CARD_HEIGHT - 20;
             DrawCardGroup(deckCards, deckY, faction);
         }
@@ -1400,14 +1406,14 @@ public class Game1 : Game
             {
                 // Hand cards move out of panel
                 handY = isRome
-                    ? panelY - CARD_PANEL_OFFSET
-                    : panelY + panelHeight + CARD_PANEL_OFFSET;
+                    ? panelY - CARD_PANEL_OFFSET_ROME
+                    : panelY + panelHeight + CARD_PANEL_OFFSET_CARTHAGE;
             }
             else
             {
                 // Hand cards positioned near collapsed panel
                 handY = isRome
-                    ? _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10
+                    ? GraphicsDevice.Viewport.Height - PANEL_COLLAPSED_HEIGHT - CARD_HEIGHT - 10
                     : PANEL_COLLAPSED_HEIGHT + 10;
             }
             DrawCardGroup(handCards, handY, faction);
@@ -1419,9 +1425,9 @@ public class Game1 : Game
         bool isRome = (faction == PlayerType.Rome);
 
         // Calculate arrow button position
-        float arrowX = (_graphics.PreferredBackBufferWidth - ARROW_BUTTON_SIZE) / 2;
+        float arrowX = (GraphicsDevice.Viewport.Width - ARROW_BUTTON_SIZE) / 2;
         float arrowY = isRome
-            ? _graphics.PreferredBackBufferHeight - PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2
+            ? GraphicsDevice.Viewport.Height - PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2
             : PANEL_COLLAPSED_HEIGHT / 2 - ARROW_BUTTON_SIZE / 2;
 
         Rectangle arrowRect = new Rectangle((int)arrowX, (int)arrowY, (int)ARROW_BUTTON_SIZE, (int)ARROW_BUTTON_SIZE);
@@ -1475,7 +1481,7 @@ public class Game1 : Game
 
         // Calculate total width and starting X position to center the cards
         float totalWidth = (groupedCards.Count * CARD_WIDTH) + ((groupedCards.Count - 1) * CARD_SPACING);
-        float startX = (_graphics.PreferredBackBufferWidth - totalWidth) / 2;
+        float startX = (GraphicsDevice.Viewport.Width - totalWidth) / 2;
 
         const float stackOffset = 3f;
 
@@ -1632,11 +1638,11 @@ public class Game1 : Game
     private void DrawMessageBox(string message)
     {
         // Calculate message box position (center of screen)
-        float boxX = (_graphics.PreferredBackBufferWidth - MESSAGE_BOX_WIDTH) / 2;
-        float boxY = (_graphics.PreferredBackBufferHeight - MESSAGE_BOX_HEIGHT) / 2;
+        float boxX = (GraphicsDevice.Viewport.Width - MESSAGE_BOX_WIDTH) / 2;
+        float boxY = (GraphicsDevice.Viewport.Height - MESSAGE_BOX_HEIGHT) / 2;
 
         // Draw semi-transparent overlay
-        Rectangle overlayRect = new Rectangle(0, 0, _graphics.PreferredBackBufferWidth, _graphics.PreferredBackBufferHeight);
+        Rectangle overlayRect = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
         _spriteBatch.Draw(_pixelTexture, overlayRect, new Color(0, 0, 0, 150));
 
         // Draw message box background
@@ -1732,7 +1738,7 @@ public class Game1 : Game
         // Calculate vertical tracker position (right side of screen)
         float startY = 200;
         float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 40;
-        float trackerX = _graphics.PreferredBackBufferWidth - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
+        float trackerX = GraphicsDevice.Viewport.Width - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
@@ -2034,8 +2040,8 @@ public class Game1 : Game
             return;
 
         // Calculate button position (center bottom of screen, above Rome cards)
-        float buttonX = (_graphics.PreferredBackBufferWidth - ROLL_BUTTON_WIDTH) / 2;
-        float buttonY = _graphics.PreferredBackBufferHeight - CARD_HEIGHT - CARD_HAND_Y - ROLL_BUTTON_HEIGHT - 20;
+        float buttonX = (GraphicsDevice.Viewport.Width - ROLL_BUTTON_WIDTH) / 2;
+        float buttonY = GraphicsDevice.Viewport.Height - CARD_HEIGHT - CARD_HAND_Y - ROLL_BUTTON_HEIGHT - 20;
 
         Rectangle rollButton = new Rectangle(
             (int)buttonX,
