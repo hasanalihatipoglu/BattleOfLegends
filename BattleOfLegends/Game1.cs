@@ -37,6 +37,7 @@ public class Game1 : Game
     private const float HEX_HEIGHT = 80f;
 
     private MouseState _previousMouseState;
+    private KeyboardState _previousKeyboardState;
     private int _selectedRow = -1;
     private int _selectedCol = -1;
 
@@ -88,6 +89,9 @@ public class Game1 : Game
     // Roll button constants
     private const float ROLL_BUTTON_WIDTH = 120f;
     private const float ROLL_BUTTON_HEIGHT = 60f;
+
+    // Debug display settings
+    private bool _showUnitStates = true; // Toggle to show/hide unit states for testing
 
     public Game1()
     {
@@ -306,8 +310,17 @@ public class Game1 : Game
 
     protected override void Update(GameTime gameTime)
     {
-        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
+        KeyboardState keyboardState = Keyboard.GetState();
+
+        if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || keyboardState.IsKeyDown(Keys.Escape))
             Exit();
+
+        // Toggle unit state display with 'D' key (Debug)
+        if (keyboardState.IsKeyDown(Keys.D) && !_previousKeyboardState.IsKeyDown(Keys.D))
+        {
+            _showUnitStates = !_showUnitStates;
+            MessageController.Instance.Show($"Unit state display: {(_showUnitStates ? "ON" : "OFF")}");
+        }
 
         // Update message display timer
         if (_currentMessage != null)
@@ -453,6 +466,7 @@ public class Game1 : Game
         }
 
         _previousMouseState = mouseState;
+        _previousKeyboardState = keyboardState;
 
         base.Update(gameTime);
     }
@@ -980,6 +994,37 @@ public class Game1 : Game
                                     (int)unitWidth,
                                     (int)unitHeight);
                                 _spriteBatch.Draw(texture, destRect, Color.White);
+                            }
+
+                            // Draw unit state text below unit (if debug enabled)
+                            if (_showUnitStates && _font != null)
+                            {
+                                string stateText = tile.Unit.State.ToString();
+                                float stateScale = 0.2f;
+                                Vector2 textSize = _font.MeasureString(stateText) * stateScale;
+                                Vector2 statePosition = new Vector2(
+                                    centerX - textSize.X / 2,
+                                    centerY + unitHeight / 2 + 5);
+
+                                // Choose color based on state
+                                Color stateColor = tile.Unit.State switch
+                                {
+                                    UnitState.Idle => Color.White,
+                                    UnitState.Active => Color.LimeGreen,
+                                    UnitState.Moved => Color.Gray,
+                                    UnitState.Marched => Color.DarkGray,
+                                    UnitState.Attacked => Color.Red,
+                                    UnitState.Retreating => Color.Yellow,
+                                    UnitState.Retreated => Color.Orange,
+                                    UnitState.Advancing => Color.Cyan,
+                                    UnitState.Advanced => Color.LightBlue,
+                                    UnitState.Attacking => Color.DarkRed,
+                                    UnitState.Defending => Color.Blue,
+                                    UnitState.Dead => Color.Black,
+                                    _ => Color.White
+                                };
+
+                                _spriteBatch.DrawString(_font, stateText, statePosition, stateColor, 0f, Vector2.Zero, stateScale, SpriteEffects.None, 0f);
                             }
                         }
                     }
