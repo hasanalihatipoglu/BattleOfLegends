@@ -21,6 +21,8 @@ public class Player(PlayerType type)
         if (Type == e.Faction)
         {
             Morale.Change(e.MoraleAmount);
+
+
         }
     }
 
@@ -37,6 +39,7 @@ public class Player(PlayerType type)
         if (Type == e.Faction)
         {
             Action.Change(e.ActionAmount);
+
         }
     }
 

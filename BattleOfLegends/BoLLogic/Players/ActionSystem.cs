@@ -15,6 +15,7 @@ public class ActionSystem()
         {
             ActionValue += actionAmount;
             IsMaxActionReached = false;
+            System.Diagnostics.Debug.WriteLine($"Action changed for {Faction}: {actionAmount}");
         }
 
         else 

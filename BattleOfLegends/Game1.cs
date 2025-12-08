@@ -135,9 +135,23 @@ public class Game1 : Game
 
         // Subscribe to message events
         MessageController.Instance.Message += OnMessage;
+        MessageController.Instance.Info += OnMessage;  // Info messages also go to OnMessage handler
 
         // Subscribe to sound events
         SoundController.Instance.Play += OnPlaySound;
+
+        // Subscribe to TurnManager events for UI updates
+        TurnManager.Instance.ChangeTurnPhase += OnTurnPhaseChanged;
+        TurnManager.Instance.ChangePlayer += OnPlayerChanged;
+        TurnManager.Instance.ChangeGamePhase += OnGamePhaseChanged;
+        TurnManager.Instance.ChangeGameRound += OnGameRoundChanged;
+
+        foreach (var player in _board.Players)
+        {
+            TurnManager.Instance.ChangeHand += player.On_HandChanged;
+            TurnManager.Instance.ChangeAction += player.On_ActionChanged;
+            CombatManager.Instance.ChangeMorale += player.On_MoraleChanged;
+        }
 
         // Subscribe to card state changes to update cache
       //  System.Diagnostics.Debug.WriteLine($"========== GAME1: SUBSCRIBING TO {_board.Cards.Count} CARD STATE CHANGES ==========");
@@ -683,6 +697,20 @@ public class Game1 : Game
             return true;
         }
 
+        // Check END ROUND button
+        Rectangle endRoundButton = new Rectangle(
+            (int)PHASE_TRACKER_LEFT_X,
+            (int)(startY + 2 * PHASE_BOX_HEIGHT + 2 * PHASE_SPACING),
+            (int)PHASE_BOX_WIDTH,
+            (int)PHASE_BOX_HEIGHT);
+
+        if (endRoundButton.Contains(mouseX, mouseY))
+        {
+            // Increment game round - this will trigger OnGameRoundChanged which resets units
+            TurnManager.Instance.ChangeCurrentGameRound();
+            return true;
+        }
+
         return false;
     }
 
@@ -742,6 +770,45 @@ public class Game1 : Game
                 _resolvingCard = null;
                 _resolvingCardAnimProgress = 0f;
             }
+        }
+    }
+
+    private void OnTurnPhaseChanged(object sender, EventArgs e)
+    {
+        // Mark card cache as dirty when turn phase changes
+        _cardCacheDirty = true;
+        System.Diagnostics.Debug.WriteLine($"Turn phase changed to: {TurnManager.Instance.CurrentTurnPhase}");
+    }
+
+    private void OnPlayerChanged(object sender, EventArgs e)
+    {
+        // Mark card cache as dirty when player changes
+        _cardCacheDirty = true;
+        System.Diagnostics.Debug.WriteLine($"Player changed to: {TurnManager.Instance.CurrentPlayer}");
+    }
+
+    private void OnGamePhaseChanged(object sender, EventArgs e)
+    {
+        // Mark card cache as dirty when game phase changes
+        _cardCacheDirty = true;
+        System.Diagnostics.Debug.WriteLine($"Game phase changed to: {TurnManager.Instance.CurrentGamePhase}");
+    }
+
+    private void OnGameRoundChanged(object sender, EventArgs e)
+    {
+        System.Diagnostics.Debug.WriteLine($"Game round changed to: {TurnManager.Instance.CurrentGameRound}");
+
+        // Reset all units to Idle state at the start of a new round
+        if (_board?.Units != null)
+        {
+            foreach (var unit in _board.Units)
+            {
+                if (unit.State != UnitState.Dead)
+                {
+                    unit.State = UnitState.Idle;
+                }
+            }
+            System.Diagnostics.Debug.WriteLine($"All units reset to Idle state for round {TurnManager.Instance.CurrentGameRound}");
         }
     }
 
@@ -805,13 +872,13 @@ public class Game1 : Game
             }
             catch (Exception ex)
             {
-               // System.Diagnostics.Debug.WriteLine($"Error playing sound {e.Sound}: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Error playing sound {e.Sound}: {ex.Message}");
             }
         }
         else
         {
             var availableSounds = _soundEffects != null ? string.Join(", ", _soundEffects.Keys) : "none";
-            //System.Diagnostics.Debug.WriteLine($"Sound not found: {e.Sound}. Available sounds: {availableSounds}");
+            System.Diagnostics.Debug.WriteLine($"Sound not found: {e.Sound}. Available sounds: {availableSounds}");
         }
     }
 
@@ -1948,7 +2015,7 @@ public class Game1 : Game
         float gamePhaseHeight = 200 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float gapUI = 50;
         float startY = gamePhaseHeight + gapUI;
-        float totalHeight = 2 * PHASE_BOX_HEIGHT + PHASE_SPACING + 40;
+        float totalHeight = 3 * PHASE_BOX_HEIGHT + 2 * PHASE_SPACING + 40; // Now includes END ROUND button
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
@@ -2028,6 +2095,43 @@ public class Game1 : Game
         else
         {
             DrawSimpleText(_spriteBatch, "CARTHAGE", new Vector2(carthageButton.X + 10, carthageButton.Y + 15), Color.White, 0.9f, (int)PHASE_BOX_WIDTH - 20);
+        }
+
+        // Draw END ROUND button
+        Rectangle endRoundButton = new Rectangle(
+            (int)PHASE_TRACKER_LEFT_X,
+            (int)(startY + 2 * PHASE_BOX_HEIGHT + 2 * PHASE_SPACING),
+            (int)PHASE_BOX_WIDTH,
+            (int)PHASE_BOX_HEIGHT);
+
+        Color endRoundColor = new Color(180, 120, 60);
+        _spriteBatch.Draw(_pixelTexture, endRoundButton, endRoundColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, endRoundButton, new Color(255, 200, 100), 2f);
+
+        // Draw END ROUND text
+        if (_font != null)
+        {
+            string endRoundText = "END ROUND";
+            float maxWidth = PHASE_BOX_WIDTH - 10;
+            float scale = 0.35f;
+
+            // Measure and adjust scale to fit
+            Vector2 textSize = _font.MeasureString(endRoundText) * scale;
+            if (textSize.X > maxWidth)
+            {
+                scale = maxWidth / _font.MeasureString(endRoundText).X;
+            }
+
+            // Recalculate size with final scale
+            textSize = _font.MeasureString(endRoundText) * scale;
+            Vector2 textPosition = new Vector2(
+                endRoundButton.X + (PHASE_BOX_WIDTH - textSize.X) / 2,
+                endRoundButton.Y + (PHASE_BOX_HEIGHT - textSize.Y) / 2);
+            _spriteBatch.DrawString(_font, endRoundText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            DrawSimpleText(_spriteBatch, "END ROUND", new Vector2(endRoundButton.X + 10, endRoundButton.Y + 15), Color.White, 0.9f, (int)PHASE_BOX_WIDTH - 20);
         }
     }
 

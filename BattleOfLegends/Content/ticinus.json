@@ -6,7 +6,7 @@
       "Faction": "Rome",
       "Morale": 3,
       "MaxHand": 3,
-      "Hand": 0,
+      "Hand": 3,
       "MaxAction": 3,
       "Action": 0
     },
@@ -14,7 +14,7 @@
       "Faction": "Carthage",
       "Morale": 3,
       "MaxHand": 3,
-      "Hand": 0,
+      "Hand": 3,
       "MaxAction": 3,
       "Action": 0
     }
@@ -45,7 +45,7 @@
     "(1,10)": "Grass",
     "(1,11)": "Grass",
     "(2,0)": "Grass",
-    "(2,1)": "Grass",
+    "(2,1)": "Water",
     "(2,2)": "Grass",
     "(2,3)": "Grass",
     "(2,4)": "Grass",
@@ -80,7 +80,7 @@
     "(4,9)": "Grass",
     "(4,10)": "Grass",
     "(4,11)": "Grass",
-    "(5,0)": "Hill",
+    "(5,0)": "Water",
     "(5,1)": "Grass",
     "(5,2)": "Grass",
     "(5,3)": "Grass",
@@ -98,7 +98,7 @@
     "(6,3)": "Grass",
     "(6,4)": "Grass",
     "(6,5)": "Grass",
-    "(6,6)": "Hill",
+    "(6,6)": "Grass",
     "(6,7)": "Grass",
     "(6,8)": "Grass",
     "(6,9)": "Grass",
@@ -204,19 +204,14 @@
       "State": "InDeck"
     },
     {
-      "Faction": "Rome",
-      "Card": "CavalryCharge",
-      "State": "InHand"
+        "Faction": "Rome",
+        "Card": "CavalryCharge",
+        "State": "InHand"
     },
     {
-      "Faction": "Rome",
-      "Card": "Withdraw",
-      "State": "InHand"
-    },
-    {
-      "Faction": "Rome",
-      "Card": "Withdraw",
-      "State": "InDeck"
+        "Faction": "Rome",
+        "Card": "Withdraw",
+        "State": "InHand"
     },
     {
       "Faction": "Rome",
@@ -225,8 +220,13 @@
     },
     {
       "Faction": "Rome",
-      "Card": "Flanking",
-      "State": "InHand"
+      "Card": "Withdraw",
+      "State": "InDeck"
+    },
+    {
+        "Faction": "Rome",
+        "Card": "Flanking",
+        "State": "InDeck"
     },
     {
       "Faction": "Rome",
@@ -237,21 +237,21 @@
       "Faction": "Rome",
       "Card": "Flanking",
       "State": "InDeck"
+    },
+    {
+        "Faction": "Rome",
+        "Card": "CavalryCounter",
+        "State": "InHand"
     },
     {
       "Faction": "Rome",
       "Card": "CavalryCounter",
-      "State": "InHand"
-    },
-    {
-      "Faction": "Rome",
-      "Card": "CavalryCounter",
       "State": "InDeck"
     },
     {
-      "Faction": "Rome",
-      "Card": "CavalryPursue",
-      "State": "InHand"
+        "Faction": "Rome",
+        "Card": "CavalryPursue",
+        "State": "InDeck"
     },
     {
       "Faction": "Rome",
@@ -279,9 +279,9 @@
       "State": "InDeck"
     },
     {
-      "Faction": "Carthage",
-      "Card": "CavalryCharge",
-      "State": "InHand"
+        "Faction": "Carthage",
+        "Card": "CavalryCharge",
+        "State": "InHand"
     },
     {
       "Faction": "Carthage",
@@ -289,9 +289,9 @@
       "State": "InDeck"
     },
     {
-      "Faction": "Carthage",
-      "Card": "Withdraw",
-      "State": "InHand"
+        "Faction": "Carthage",
+        "Card": "Withdraw",
+        "State": "InHand"
     },
     {
       "Faction": "Carthage",
@@ -304,9 +304,14 @@
       "State": "InDeck"
     },
     {
-      "Faction": "Carthage",
-      "Card": "Flanking",
-      "State": "InHand"
+        "Faction": "Carthage",
+        "Card": "Flanking",
+        "State": "InDeck"
+    },
+    {
+        "Faction": "Carthage",
+        "Card": "Flanking",
+        "State": "InDeck"
     },
     {
       "Faction": "Carthage",
@@ -314,24 +319,19 @@
       "State": "InDeck"
     },
     {
-      "Faction": "Carthage",
-      "Card": "Flanking",
-      "State": "InDeck"
+        "Faction": "Carthage",
+        "Card": "CavalryCounter",
+        "State": "InHand"
     },
     {
       "Faction": "Carthage",
       "Card": "CavalryCounter",
-      "State": "InHand"
-    },
-    {
-      "Faction": "Carthage",
-      "Card": "CavalryCounter",
       "State": "InDeck"
     },
     {
-      "Faction": "Carthage",
-      "Card": "CavalryPursue",
-      "State": "InHand"
+        "Faction": "Carthage",
+        "Card": "CavalryPursue",
+        "State": "InDeck"
     },
     {
       "Faction": "Carthage",

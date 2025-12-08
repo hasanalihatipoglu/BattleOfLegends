@@ -15,7 +15,7 @@ public abstract class Card : IDisposable
     public CardState State { get; set; }
  
 
-    CardPosition playPosition = new CardPosition(20, 300);
+   // CardPosition playPosition = new CardPosition(20, 300);
    
 
     public event EventHandler ChangeState;
@@ -78,12 +78,18 @@ public abstract class Card : IDisposable
 
         if (TurnManager.Instance.CurrentGamePhase == GamePhase.Select)
         {
-
             switch (this.State)
             {
-                
                 case CardState.InDeck:
-                    TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, 1);                    
+                    // Check if adding one more card would exceed max hand limit
+                    var player = GameManager.Instance.CurrentBoard.Players.FirstOrDefault(p => p.Type == Faction);
+                    if (player != null && player.Hand.HandValue >= player.Hand.MaxHand)
+                    {
+                        MessageController.Instance.Show($"Max hand limit reached for {Faction}!");
+                        return;
+                    }
+
+                    TurnManager.Instance.ChangeCurrentPlayerHand(Faction, 1);
                     ChangeCardState(CardState.InHand);
                     break;
 
@@ -91,7 +97,6 @@ public abstract class Card : IDisposable
                     TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, -1);
                     ChangeCardState(CardState.InDeck);
                     break;
-
             }
         }
 

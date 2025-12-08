@@ -15,6 +15,7 @@ public class HandSystem()
         {
             HandValue += handAmount;
             IsMaxHandReached = false;
+            System.Diagnostics.Debug.WriteLine($"Hand changed for {Faction}: {handAmount}");
         }
 
         else 
