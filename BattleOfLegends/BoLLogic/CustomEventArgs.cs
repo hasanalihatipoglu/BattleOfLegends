@@ -8,9 +8,10 @@ public class ClickEventArgs(Position position, Board board) : EventArgs
 }
 
 
-public class MessageEventArgs(string message) : EventArgs
+public class MessageEventArgs(string message, bool requiresOkButton = false) : EventArgs
 {
     public string Message { get; set; } = message;
+    public bool RequiresOkButton { get; set; } = requiresOkButton;
 }
 
 

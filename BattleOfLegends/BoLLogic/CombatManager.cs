@@ -101,7 +101,7 @@ public sealed class CombatManager
         }
 
 
-        MessageController.Instance.Show($"{Attacker} {Type}({CurrentCombatType}) attacks {Target}");
+        MessageController.Instance.ShowWithOkButton($"{Attacker} {Type}({CurrentCombatType}) attacks {Target}");
 
         return true;
 
@@ -440,7 +440,7 @@ public sealed class CombatManager
         var attackResult = String.Join(", ", attackDice.ToArray());
         var defenseResult = String.Join(", ", defenseDice.ToArray());
 
-        MessageController.Instance.Show($"{Attacker} attacks {Target}\n" +
+        MessageController.Instance.ShowWithOkButton($"{Attacker} attacks {Target}\n" +
                                 $"AttackDice: {attackResult}, DefenceDice: {defenseResult}\n" +
               $"Hits: {NumberOfHits}, Wounds: {NumberOfWounds}  Retreats: {NumberOfRetreats}");
 

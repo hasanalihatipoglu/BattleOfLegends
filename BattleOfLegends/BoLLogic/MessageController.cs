@@ -17,6 +17,10 @@ public sealed class MessageController
         Message?.Invoke(this, new MessageEventArgs(msgText));
     }
 
+    public void ShowWithOkButton(string msgText)
+    {
+        Message?.Invoke(this, new MessageEventArgs(msgText, requiresOkButton: true));
+    }
 
     public void Write(string infoText)
     {

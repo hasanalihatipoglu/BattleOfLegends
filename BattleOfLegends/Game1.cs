@@ -73,11 +73,20 @@ public class Game1 : Game
 
     // Message box state
     private string _currentMessage = null;
+    private bool _currentMessageRequiresOk = false;
     private double _messageDisplayTime = 0;
     private const double MESSAGE_DISPLAY_DURATION = 1.0; // seconds
     private const float MESSAGE_BOX_WIDTH = 500f;
-    private const float MESSAGE_BOX_HEIGHT = 150f;
+    private const float MESSAGE_BOX_HEIGHT = 200f; // Increased to fit OK button
     private const float MESSAGE_BOX_PADDING = 20f;
+    private const float MESSAGE_BOX_TITLE_HEIGHT = 40f;
+    private const float OK_BUTTON_WIDTH = 100f;
+    private const float OK_BUTTON_HEIGHT = 40f;
+
+    // Message box dragging state
+    private Vector2 _messageBoxPosition = Vector2.Zero;
+    private bool _isDraggingMessageBox = false;
+    private Vector2 _messageBoxDragOffset = Vector2.Zero;
 
     // Phase tracker constants (vertical layout)
     private const float PHASE_BOX_WIDTH = 140f;
@@ -348,8 +357,8 @@ public class Game1 : Game
             MessageController.Instance.Show($"Unit state display: {(_showUnitStates ? "ON" : "OFF")}");
         }
 
-        // Update message display timer
-        if (_currentMessage != null)
+        // Update message display timer (only auto-dismiss if it doesn't require OK button)
+        if (_currentMessage != null && !_currentMessageRequiresOk)
         {
             _messageDisplayTime += gameTime.ElapsedGameTime.TotalSeconds;
             if (_messageDisplayTime >= MESSAGE_DISPLAY_DURATION)
@@ -413,6 +422,50 @@ public class Game1 : Game
             _isPanning = false;
         }
 
+        // Handle message box dragging
+        if (_currentMessage != null && _currentMessageRequiresOk)
+        {
+            // Initialize message box position if needed
+            if (_messageBoxPosition == Vector2.Zero)
+            {
+                _messageBoxPosition = new Vector2(
+                    (GraphicsDevice.Viewport.Width - MESSAGE_BOX_WIDTH) / 2,
+                    (GraphicsDevice.Viewport.Height - MESSAGE_BOX_HEIGHT) / 2);
+            }
+
+            Rectangle titleBar = new Rectangle(
+                (int)_messageBoxPosition.X,
+                (int)_messageBoxPosition.Y,
+                (int)MESSAGE_BOX_WIDTH,
+                (int)MESSAGE_BOX_TITLE_HEIGHT);
+
+            // Start dragging on left mouse down in title bar
+            if (mouseState.LeftButton == ButtonState.Pressed && _previousMouseState.LeftButton == ButtonState.Released)
+            {
+                if (titleBar.Contains(mouseState.X, mouseState.Y))
+                {
+                    _isDraggingMessageBox = true;
+                    _messageBoxDragOffset = new Vector2(mouseState.X, mouseState.Y) - _messageBoxPosition;
+                }
+            }
+
+            // Update position while dragging
+            if (_isDraggingMessageBox && mouseState.LeftButton == ButtonState.Pressed)
+            {
+                _messageBoxPosition = new Vector2(mouseState.X, mouseState.Y) - _messageBoxDragOffset;
+
+                // Keep message box within screen bounds
+                _messageBoxPosition.X = Math.Max(0, Math.Min(_messageBoxPosition.X, GraphicsDevice.Viewport.Width - MESSAGE_BOX_WIDTH));
+                _messageBoxPosition.Y = Math.Max(0, Math.Min(_messageBoxPosition.Y, GraphicsDevice.Viewport.Height - MESSAGE_BOX_HEIGHT));
+            }
+
+            // Stop dragging on mouse release
+            if (mouseState.LeftButton == ButtonState.Released)
+            {
+                _isDraggingMessageBox = false;
+            }
+        }
+
         // Handle hover for path preview
         Vector2 hoverWorldPos = ScreenToWorld(new Vector2(mouseState.X, mouseState.Y), _zoomLevel);
         _grid.PointToHex(hoverWorldPos.X, hoverWorldPos.Y, out int hoverRow, out int hoverCol);
@@ -431,75 +484,184 @@ public class Game1 : Game
         {
             System.Diagnostics.Debug.WriteLine($"Left click detected at ({mouseState.X}, {mouseState.Y})");
 
-            // Check if clicking on Roll button first (screen space)
-            if (HandleRollButtonClick(mouseState.X, mouseState.Y))
+            // Check if there's a modal message box with OK button
+            if (_currentMessage != null && _currentMessageRequiresOk)
             {
-                // Roll button was clicked, don't process other clicks
-                System.Diagnostics.Debug.WriteLine("Roll button handled the click");
+                // Don't process OK button click if we started dragging
+                if (_isDraggingMessageBox)
+                {
+                    // Block the click - we're dragging
+                }
+                // Message box is modal - only allow OK button clicks, block everything else
+                else if (HandleMessageBoxOkClick(mouseState.X, mouseState.Y))
+                {
+                    // OK button was clicked, dismiss the message
+                    _currentMessage = null;
+                    _currentMessageRequiresOk = false;
+                    _messageDisplayTime = 0;
+                    _messageBoxPosition = Vector2.Zero; // Reset position for next message
+                }
+                // Block all other clicks when modal message is displayed
             }
-            // Check if clicking on current player tracker (screen space)
-            else if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
+            // Check if Roll button is visible (combat is declared and either Roll phase or immediate card) - it's also modal
+            else if (CombatManager.Instance.Attacker != null && CombatManager.Instance.Target != null)
             {
-                // Current player tracker was clicked, don't process other clicks
-            }
-            // Check if clicking on game phase tracker (screen space)
-            else if (HandleGamePhaseTrackerClick(mouseState.X, mouseState.Y))
-            {
-                // Game phase tracker was clicked, don't process other clicks
-            }
-            // Check if clicking on turn phase tracker (screen space)
-            else if (HandlePhaseTrackerClick(mouseState.X, mouseState.Y))
-            {
-                // Phase tracker was clicked, don't process other clicks
-            }
-            // Check if clicking on arrow buttons to expand/collapse card panels
-            else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
-            {
-                // Arrow button was clicked, don't process other clicks
-            }
-            // Check if clicking on resolving card first (highest priority)
-            else if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
-            {
-                // Resolving card was clicked to dismiss it
-            }
-            // Check if clicking on a card (screen space, not world space)
-            else if (HandleCardClick(mouseState.X, mouseState.Y))
-            {
-                // Card was clicked, don't process hex click
+                // Check if button should be active
+                bool isRollPhase = TurnManager.Instance.CurrentTurnPhase == TurnPhase.Roll;
+                bool hasImmediateCard = _resolvingCard != null &&
+                    (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter);
+
+                bool isActive = isRollPhase || hasImmediateCard;
+
+                if (isActive)
+                {
+                    // Roll button is modal - only allow Roll button clicks, block everything else
+                    if (HandleRollButtonClick(mouseState.X, mouseState.Y))
+                    {
+                        // Roll button was clicked, don't process other clicks
+                        System.Diagnostics.Debug.WriteLine("Roll button handled the click");
+                    }
+                    // Block all other clicks when Roll button is displayed
+                }
+                else
+                {
+                    // Combat declared but not in Roll phase - allow normal interactions
+                    // Check if clicking on current player tracker (screen space)
+                    if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
+                    {
+                        // Current player tracker was clicked, don't process other clicks
+                    }
+                    // Check if clicking on game phase tracker (screen space)
+                    else if (HandleGamePhaseTrackerClick(mouseState.X, mouseState.Y))
+                    {
+                        // Game phase tracker was clicked, don't process other clicks
+                    }
+                    // Check if clicking on turn phase tracker (screen space)
+                    else if (HandlePhaseTrackerClick(mouseState.X, mouseState.Y))
+                    {
+                        // Phase tracker was clicked, don't process other clicks
+                    }
+                    // Check if clicking on arrow buttons to expand/collapse card panels
+                    else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
+                    {
+                        // Arrow button was clicked, don't process other clicks
+                    }
+                    // Check if clicking on resolving card first (highest priority)
+                    else if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
+                    {
+                        // Resolving card was clicked to dismiss it
+                    }
+                    // Check if clicking on a card (screen space, not world space)
+                    else if (HandleCardClick(mouseState.X, mouseState.Y))
+                    {
+                        // Card was clicked, don't process hex click
+                    }
+                    else
+                    {
+                        // Convert screen position to world position for hex selection
+                        Vector2 worldPos = ScreenToWorld(new Vector2(mouseState.X, mouseState.Y), _zoomLevel);
+
+                        // Convert mouse position to hex coordinates
+                        _grid.PointToHex(worldPos.X, worldPos.Y, out int row, out int col);
+
+                        if (row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS)
+                        {
+                            _selectedRow = row;
+                            _selectedCol = col;
+
+                            // Get the tile at this position
+                            var tile = _board[new Position(row, col)];
+                            if (tile != null)
+                            {
+                                // Call the tile's OnClick method which will handle unit clicks internally
+                                tile.OnClick(_board);
+
+                                // Display information in window title
+                                if (tile.Unit != null)
+                                {
+                                    var unit = tile.Unit;
+                                    string unitInfo = $"Battle of Legends - {unit.GetType().Name} ({unit.Faction}) at ({row},{col}) | Health: {unit.Health.GetHealth()}/{unit.Strength} | State: {unit.State}";
+                                    Window.Title = unitInfo;
+                                    System.Diagnostics.Debug.WriteLine(unitInfo);
+                                }
+                                else
+                                {
+                                    // Show tile information
+                                    string tileInfo = $"Battle of Legends - {tile.GetType().Name} at ({row}, {col})";
+                                    Window.Title = tileInfo;
+                                }
+                            }
+                        }
+                    }
+                }
             }
             else
             {
-                // Convert screen position to world position for hex selection
-                Vector2 worldPos = ScreenToWorld(new Vector2(mouseState.X, mouseState.Y), _zoomLevel);
-
-                // Convert mouse position to hex coordinates
-                _grid.PointToHex(worldPos.X, worldPos.Y, out int row, out int col);
-
-                if (row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS)
+                // No modal message and no combat declared - normal interactions
+                // Check if clicking on current player tracker (screen space)
+                if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
                 {
-                    _selectedRow = row;
-                    _selectedCol = col;
+                    // Current player tracker was clicked, don't process other clicks
+                }
+                // Check if clicking on game phase tracker (screen space)
+                else if (HandleGamePhaseTrackerClick(mouseState.X, mouseState.Y))
+                {
+                    // Game phase tracker was clicked, don't process other clicks
+                }
+                // Check if clicking on turn phase tracker (screen space)
+                else if (HandlePhaseTrackerClick(mouseState.X, mouseState.Y))
+                {
+                    // Phase tracker was clicked, don't process other clicks
+                }
+                // Check if clicking on arrow buttons to expand/collapse card panels
+                else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
+                {
+                    // Arrow button was clicked, don't process other clicks
+                }
+                // Check if clicking on resolving card first (highest priority)
+                else if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
+                {
+                    // Resolving card was clicked to dismiss it
+                }
+                // Check if clicking on a card (screen space, not world space)
+                else if (HandleCardClick(mouseState.X, mouseState.Y))
+                {
+                    // Card was clicked, don't process hex click
+                }
+                else
+                {
+                    // Convert screen position to world position for hex selection
+                    Vector2 worldPos = ScreenToWorld(new Vector2(mouseState.X, mouseState.Y), _zoomLevel);
 
-                    // Get the tile at this position
-                    var tile = _board[new Position(row, col)];
-                    if (tile != null)
+                    // Convert mouse position to hex coordinates
+                    _grid.PointToHex(worldPos.X, worldPos.Y, out int row, out int col);
+
+                    if (row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS)
                     {
-                        // Call the tile's OnClick method which will handle unit clicks internally
-                        tile.OnClick(_board);
+                        _selectedRow = row;
+                        _selectedCol = col;
 
-                        // Display information in window title
-                        if (tile.Unit != null)
+                        // Get the tile at this position
+                        var tile = _board[new Position(row, col)];
+                        if (tile != null)
                         {
-                            var unit = tile.Unit;
-                            string unitInfo = $"Battle of Legends - {unit.GetType().Name} ({unit.Faction}) at ({row},{col}) | Health: {unit.Health.GetHealth()}/{unit.Strength} | State: {unit.State}";
-                            Window.Title = unitInfo;
-                            System.Diagnostics.Debug.WriteLine(unitInfo);
-                        }
-                        else
-                        {
-                            // Show tile information
-                            string tileInfo = $"Battle of Legends - {tile.GetType().Name} at ({row}, {col})";
-                            Window.Title = tileInfo;
+                            // Call the tile's OnClick method which will handle unit clicks internally
+                            tile.OnClick(_board);
+
+                            // Display information in window title
+                            if (tile.Unit != null)
+                            {
+                                var unit = tile.Unit;
+                                string unitInfo = $"Battle of Legends - {unit.GetType().Name} ({unit.Faction}) at ({row},{col}) | Health: {unit.Health.GetHealth()}/{unit.Strength} | State: {unit.State}";
+                                Window.Title = unitInfo;
+                                System.Diagnostics.Debug.WriteLine(unitInfo);
+                            }
+                            else
+                            {
+                                // Show tile information
+                                string tileInfo = $"Battle of Legends - {tile.GetType().Name} at ({row}, {col})";
+                                Window.Title = tileInfo;
+                            }
                         }
                     }
                 }
@@ -714,11 +876,24 @@ public class Game1 : Game
         return false;
     }
 
+    private bool HandleMessageBoxOkClick(int mouseX, int mouseY)
+    {
+        // Use the draggable message box position
+        float boxX = _messageBoxPosition.X;
+        float boxY = _messageBoxPosition.Y;
+        float buttonX = boxX + (MESSAGE_BOX_WIDTH - OK_BUTTON_WIDTH) / 2;
+        float buttonY = boxY + MESSAGE_BOX_HEIGHT - MESSAGE_BOX_PADDING - OK_BUTTON_HEIGHT;
+
+        Rectangle okButton = new Rectangle((int)buttonX, (int)buttonY, (int)OK_BUTTON_WIDTH, (int)OK_BUTTON_HEIGHT);
+
+        return okButton.Contains(mouseX, mouseY);
+    }
+
     private bool HandleRollButtonClick(int mouseX, int mouseY)
     {
         // Calculate Roll button position (center bottom of screen, above Rome cards)
         float buttonX = (GraphicsDevice.Viewport.Width - ROLL_BUTTON_WIDTH) / 2;
-        float buttonY = GraphicsDevice.Viewport.Height - CARD_HEIGHT - CARD_HAND_Y - ROLL_BUTTON_HEIGHT - 20;
+        float buttonY = (GraphicsDevice.Viewport.Height - ROLL_BUTTON_HEIGHT) / 2;
 
         Rectangle rollButton = new Rectangle(
             (int)buttonX,
@@ -745,8 +920,9 @@ public class Game1 : Game
     {
         // Display message in game UI
         _currentMessage = e.Message;
+        _currentMessageRequiresOk = e.RequiresOkButton;
         _messageDisplayTime = 0;
-        System.Diagnostics.Debug.WriteLine($"Message: {e.Message}");
+        System.Diagnostics.Debug.WriteLine($"Message: {e.Message}, RequiresOk: {e.RequiresOkButton}");
     }
 
     private void OnCardStateChanged(object sender, EventArgs e)
@@ -1265,19 +1441,21 @@ public class Game1 : Game
         DrawGamePhaseTracker();
         DrawPhaseTracker();
         DrawCurrentPlayerTracker();
-        DrawRollButton(_totalElapsedSeconds);
         DrawCards();
 
-        // Draw resolving card (on top of everything except message box)
+        // Draw resolving card (on top of cards)
         if (_resolvingCard != null)
         {
             DrawResolvingCard();
         }
 
+        // Draw Roll button on top of resolving card
+        DrawRollButton(_totalElapsedSeconds);
+
         // Draw message box on top of everything if there's a message
         if (_currentMessage != null)
         {
-            DrawMessageBox(_currentMessage);
+            DrawMessageBox(_currentMessage, _currentMessageRequiresOk);
         }
 
         _spriteBatch.End();
@@ -1702,11 +1880,11 @@ public class Game1 : Game
         }
     }
 
-    private void DrawMessageBox(string message)
+    private void DrawMessageBox(string message, bool requiresOkButton)
     {
-        // Calculate message box position (center of screen)
-        float boxX = (GraphicsDevice.Viewport.Width - MESSAGE_BOX_WIDTH) / 2;
-        float boxY = (GraphicsDevice.Viewport.Height - MESSAGE_BOX_HEIGHT) / 2;
+        // Use the draggable message box position
+        float boxX = _messageBoxPosition.X;
+        float boxY = _messageBoxPosition.Y;
 
         // Draw semi-transparent overlay
         Rectangle overlayRect = new Rectangle(0, 0, GraphicsDevice.Viewport.Width, GraphicsDevice.Viewport.Height);
@@ -1717,18 +1895,18 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixelTexture, boxRect, new Color(40, 40, 60, 255));
         DrawRectangle(_spriteBatch, _pixelTexture, boxRect, Color.Gold, 4f);
 
-        // Draw title bar
-        Rectangle titleRect = new Rectangle((int)boxX, (int)boxY, (int)MESSAGE_BOX_WIDTH, 35);
+        // Draw title bar (draggable area)
+        Rectangle titleRect = new Rectangle((int)boxX, (int)boxY, (int)MESSAGE_BOX_WIDTH, (int)MESSAGE_BOX_TITLE_HEIGHT);
         _spriteBatch.Draw(_pixelTexture, titleRect, new Color(60, 60, 100, 255));
         DrawRectangle(_spriteBatch, _pixelTexture, titleRect, Color.Gold, 2f);
 
         // Draw title text
         if (_font != null)
         {
-            string title = "Battle of Legends";
-            float titleScale = 0.4f;
+            string title = "Battle of Legends - Drag to Move";
+            float titleScale = 0.35f;
             Vector2 titleSize = _font.MeasureString(title) * titleScale;
-            Vector2 titlePosition = new Vector2(boxX + (MESSAGE_BOX_WIDTH - titleSize.X) / 2, boxY + (35 - titleSize.Y) / 2);
+            Vector2 titlePosition = new Vector2(boxX + (MESSAGE_BOX_WIDTH - titleSize.X) / 2, boxY + (MESSAGE_BOX_TITLE_HEIGHT - titleSize.Y) / 2);
             _spriteBatch.DrawString(_font, title, titlePosition, Color.Gold, 0f, Vector2.Zero, titleScale, SpriteEffects.None, 0f);
         }
 
@@ -1737,7 +1915,7 @@ public class Game1 : Game
         {
             float messageScale = 0.5f;
             float maxWidth = MESSAGE_BOX_WIDTH - (MESSAGE_BOX_PADDING * 2);
-            Vector2 messagePosition = new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + 45);
+            Vector2 messagePosition = new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + MESSAGE_BOX_TITLE_HEIGHT + 5);
 
             // Simple word wrapping
             string[] words = message.Split(' ');
@@ -1772,27 +1950,53 @@ public class Game1 : Game
         else
         {
             // Fallback without font
-            DrawSimpleText(_spriteBatch, message, new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + 45), Color.White, 1.0f, (int)(MESSAGE_BOX_WIDTH - MESSAGE_BOX_PADDING * 2));
+            DrawSimpleText(_spriteBatch, message, new Vector2(boxX + MESSAGE_BOX_PADDING, boxY + MESSAGE_BOX_TITLE_HEIGHT + 5), Color.White, 1.0f, (int)(MESSAGE_BOX_WIDTH - MESSAGE_BOX_PADDING * 2));
         }
 
-        // Draw progress bar showing time remaining
-        float progressWidth = MESSAGE_BOX_WIDTH - (MESSAGE_BOX_PADDING * 2);
-        float progressHeight = 8f;
-        float progressX = boxX + MESSAGE_BOX_PADDING;
-        float progressY = boxY + MESSAGE_BOX_HEIGHT - MESSAGE_BOX_PADDING - progressHeight;
-
-        // Background
-        Rectangle progressBg = new Rectangle((int)progressX, (int)progressY, (int)progressWidth, (int)progressHeight);
-        _spriteBatch.Draw(_pixelTexture, progressBg, new Color(30, 30, 40, 255));
-        DrawRectangle(_spriteBatch, _pixelTexture, progressBg, Color.Gray, 1f);
-
-        // Progress bar
-        float progress = (float)(_messageDisplayTime / MESSAGE_DISPLAY_DURATION);
-        float progressBarWidth = progressWidth * (1 - progress); // Decrease as time passes
-        if (progressBarWidth > 0)
+        // Draw OK button or progress bar
+        if (requiresOkButton)
         {
-            Rectangle progressBar = new Rectangle((int)progressX, (int)progressY, (int)progressBarWidth, (int)progressHeight);
-            _spriteBatch.Draw(_pixelTexture, progressBar, Color.Gold);
+            // Draw OK button
+            float buttonX = boxX + (MESSAGE_BOX_WIDTH - OK_BUTTON_WIDTH) / 2;
+            float buttonY = boxY + MESSAGE_BOX_HEIGHT - MESSAGE_BOX_PADDING - OK_BUTTON_HEIGHT;
+
+            Rectangle okButton = new Rectangle((int)buttonX, (int)buttonY, (int)OK_BUTTON_WIDTH, (int)OK_BUTTON_HEIGHT);
+            _spriteBatch.Draw(_pixelTexture, okButton, new Color(60, 100, 60, 255));
+            DrawRectangle(_spriteBatch, _pixelTexture, okButton, Color.LimeGreen, 3f);
+
+            // Draw OK text
+            if (_font != null)
+            {
+                string okText = "OK";
+                float okScale = 0.5f;
+                Vector2 okSize = _font.MeasureString(okText) * okScale;
+                Vector2 okPosition = new Vector2(
+                    buttonX + (OK_BUTTON_WIDTH - okSize.X) / 2,
+                    buttonY + (OK_BUTTON_HEIGHT - okSize.Y) / 2);
+                _spriteBatch.DrawString(_font, okText, okPosition, Color.White, 0f, Vector2.Zero, okScale, SpriteEffects.None, 0f);
+            }
+        }
+        else
+        {
+            // Draw progress bar showing time remaining
+            float progressWidth = MESSAGE_BOX_WIDTH - (MESSAGE_BOX_PADDING * 2);
+            float progressHeight = 8f;
+            float progressX = boxX + MESSAGE_BOX_PADDING;
+            float progressY = boxY + MESSAGE_BOX_HEIGHT - MESSAGE_BOX_PADDING - progressHeight;
+
+            // Background
+            Rectangle progressBg = new Rectangle((int)progressX, (int)progressY, (int)progressWidth, (int)progressHeight);
+            _spriteBatch.Draw(_pixelTexture, progressBg, new Color(30, 30, 40, 255));
+            DrawRectangle(_spriteBatch, _pixelTexture, progressBg, Color.Gray, 1f);
+
+            // Progress bar
+            float progress = (float)(_messageDisplayTime / MESSAGE_DISPLAY_DURATION);
+            float progressBarWidth = progressWidth * (1 - progress); // Decrease as time passes
+            if (progressBarWidth > 0)
+            {
+                Rectangle progressBar = new Rectangle((int)progressX, (int)progressY, (int)progressBarWidth, (int)progressHeight);
+                _spriteBatch.Draw(_pixelTexture, progressBar, Color.Gold);
+            }
         }
     }
 
@@ -2143,9 +2347,20 @@ public class Game1 : Game
         if (combatManager.Attacker == null || combatManager.Target == null)
             return;
 
+        // Check if button should be active
+        bool isRollPhase = TurnManager.Instance.CurrentTurnPhase == TurnPhase.Roll;
+        bool hasImmediateCard = _resolvingCard != null &&
+            (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter);
+
+        bool isActive = isRollPhase || hasImmediateCard;
+
+        // Don't show button if not active
+        if (!isActive)
+            return;
+
         // Calculate button position (center bottom of screen, above Rome cards)
         float buttonX = (GraphicsDevice.Viewport.Width - ROLL_BUTTON_WIDTH) / 2;
-        float buttonY = GraphicsDevice.Viewport.Height - CARD_HEIGHT - CARD_HAND_Y - ROLL_BUTTON_HEIGHT - 20;
+        float buttonY = (GraphicsDevice.Viewport.Height - ROLL_BUTTON_HEIGHT) / 2;
 
         Rectangle rollButton = new Rectangle(
             (int)buttonX,
