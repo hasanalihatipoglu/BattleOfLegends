@@ -110,6 +110,7 @@ public class Game1 : Game
     private float _resolvingCardAnimProgress = 0f;
     private const float CARD_ANIM_SPEED = 3.0f; // Animation speed
     private const float RESOLVING_CARD_SCALE = 2.0f; // Scale factor for resolving card
+    private bool _immediateCardWasDismissed = false; // Tracks if FirstStrike or CavalryCounter was just dismissed
 
     public Game1()
     {
@@ -368,6 +369,12 @@ public class Game1 : Game
             }
         }
 
+        // Reset immediate card flag if combat has ended
+        if (_immediateCardWasDismissed && (CombatManager.Instance.Attacker == null || CombatManager.Instance.Target == null))
+        {
+            _immediateCardWasDismissed = false;
+        }
+
         // Update card cache if needed (card states may have changed)
         if (_cardCacheDirty)
         {
@@ -503,25 +510,60 @@ public class Game1 : Game
                 }
                 // Block all other clicks when modal message is displayed
             }
-            // Check if Roll button is visible (combat is declared and either Roll phase or immediate card) - it's also modal
+            // Check if there's a resolving card - it's modal
+            else if (_resolvingCard != null && _resolvingCardAnimProgress >= 1.0f)
+            {
+                // Resolving card is modal - only allow clicking on it to dismiss
+                if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
+                {
+                    // Resolving card was clicked to dismiss it
+                }
+                // Block all other clicks when resolving card is displayed
+            }
+            // Check if Roll button is visible (combat declared, Roll phase or immediate card dismissed, and no resolving card) - it's also modal
             else if (CombatManager.Instance.Attacker != null && CombatManager.Instance.Target != null)
             {
-                // Check if button should be active
+                // Check if button should be active (Roll phase or immediate card dismissed, and no resolving card)
                 bool isRollPhase = TurnManager.Instance.CurrentTurnPhase == TurnPhase.Roll;
-                bool hasImmediateCard = _resolvingCard != null &&
-                    (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter);
-
-                bool isActive = isRollPhase || hasImmediateCard;
+                bool immediateCardJustDismissed = _immediateCardWasDismissed;
+                bool isActive = (isRollPhase || immediateCardJustDismissed) && _resolvingCard == null;
 
                 if (isActive)
                 {
-                    // Roll button is modal - only allow Roll button clicks, block everything else
-                    if (HandleRollButtonClick(mouseState.X, mouseState.Y))
+                    // For regular Roll phase (not immediate cards), allow phase tracker and Roll phase card clicks
+                    if (isRollPhase && !immediateCardJustDismissed)
                     {
-                        // Roll button was clicked, don't process other clicks
-                        System.Diagnostics.Debug.WriteLine("Roll button handled the click");
+                        // Roll button in Roll phase - allow Roll button, phase tracker, and Roll phase card clicks
+                        if (HandleRollButtonClick(mouseState.X, mouseState.Y))
+                        {
+                            // Roll button was clicked, don't process other clicks
+                            System.Diagnostics.Debug.WriteLine("Roll button handled the click");
+                        }
+                        else if (HandlePhaseTrackerClick(mouseState.X, mouseState.Y))
+                        {
+                            // Phase tracker was clicked - allow changing phase
+                            // Roll button will disappear if phase changes away from Roll
+                        }
+                        else if (HandleCardClick(mouseState.X, mouseState.Y))
+                        {
+                            // Card was clicked - allow playing Roll phase cards
+                            // When card enters Resolving state, it will become modal and block everything
+                            // Roll button will be hidden while card is resolving
+                        }
+                        // Block all other clicks
                     }
-                    // Block all other clicks when Roll button is displayed
+                    else
+                    {
+                        // Immediate card dismissed - Roll button is fully modal
+                        if (HandleRollButtonClick(mouseState.X, mouseState.Y))
+                        {
+                            // Roll button was clicked, don't process other clicks
+                            System.Diagnostics.Debug.WriteLine("Roll button handled the click");
+                            // Reset the flag after Roll button is clicked
+                            _immediateCardWasDismissed = false;
+                        }
+                        // Block all other clicks when Roll button is displayed after immediate card
+                    }
                 }
                 else
                 {
@@ -545,11 +587,6 @@ public class Game1 : Game
                     else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
                     {
                         // Arrow button was clicked, don't process other clicks
-                    }
-                    // Check if clicking on resolving card first (highest priority)
-                    else if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
-                    {
-                        // Resolving card was clicked to dismiss it
                     }
                     // Check if clicking on a card (screen space, not world space)
                     else if (HandleCardClick(mouseState.X, mouseState.Y))
@@ -617,11 +654,6 @@ public class Game1 : Game
                 else if (HandleArrowButtonClick(mouseState.X, mouseState.Y))
                 {
                     // Arrow button was clicked, don't process other clicks
-                }
-                // Check if clicking on resolving card first (highest priority)
-                else if (HandleResolvingCardClick(mouseState.X, mouseState.Y))
-                {
-                    // Resolving card was clicked to dismiss it
                 }
                 // Check if clicking on a card (screen space, not world space)
                 else if (HandleCardClick(mouseState.X, mouseState.Y))
@@ -943,6 +975,12 @@ public class Game1 : Game
             // Handle card leaving Resolving state
             else if (_resolvingCard == card && card.State != CardState.Resolving)
             {
+                // Check if it was an immediate card (FirstStrike or CavalryCounter)
+                if (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter)
+                {
+                    _immediateCardWasDismissed = true;
+                }
+
                 _resolvingCard = null;
                 _resolvingCardAnimProgress = 0f;
             }
@@ -2347,15 +2385,16 @@ public class Game1 : Game
         if (combatManager.Attacker == null || combatManager.Target == null)
             return;
 
+        // Don't show button while a resolving card is being displayed
+        if (_resolvingCard != null)
+            return;
+
         // Check if button should be active
         bool isRollPhase = TurnManager.Instance.CurrentTurnPhase == TurnPhase.Roll;
-        bool hasImmediateCard = _resolvingCard != null &&
-            (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter);
+        bool immediateCardJustDismissed = _immediateCardWasDismissed;
 
-        bool isActive = isRollPhase || hasImmediateCard;
-
-        // Don't show button if not active
-        if (!isActive)
+        // Show button if in Roll phase OR if an immediate card was just dismissed
+        if (!isRollPhase && !immediateCardJustDismissed)
             return;
 
         // Calculate button position (center bottom of screen, above Rome cards)
