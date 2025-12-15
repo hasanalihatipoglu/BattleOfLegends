@@ -454,7 +454,7 @@ public sealed class CombatManager
 
     void MoraleCheck(Unit attacker, Unit target)
     {
-        if (target.State == UnitState.Dead && target.IsLight == false)
+        if (target.State == UnitState.Dead /*&& target.IsLight == false*/)
         {
             ChangeMorale?.Invoke(this, new MoraleEventArgs(attacker.Faction, 1));
             ChangeMorale?.Invoke(this, new MoraleEventArgs(target.Faction, -1));

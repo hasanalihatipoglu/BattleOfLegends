@@ -1665,6 +1665,44 @@ public class Game1 : Game
         _spriteBatch.Draw(_pixelTexture, panelRect, panelColor);
         DrawRectangle(_spriteBatch, _pixelTexture, panelRect, Color.Gray, 2f);
 
+        // Draw morale and action info on collapsed panel strip
+        if (!isExpanded)
+        {
+            var player = _board.Players.FirstOrDefault(p => p.Type == faction);
+            if (player != null)
+            {
+                float textY = panelY + PANEL_COLLAPSED_HEIGHT / 2;
+
+                // Draw Morale on the left
+                string moraleText = $"Morale: {player.Morale.MoraleValue}";
+                if (_font != null)
+                {
+                    float moraleScale = 0.4f;
+                    Vector2 moraleSize = _font.MeasureString(moraleText) * moraleScale;
+                    Vector2 moralePos = new Vector2(20, textY - moraleSize.Y / 2);
+                    _spriteBatch.DrawString(_font, moraleText, moralePos, Color.White, 0f, Vector2.Zero, moraleScale, SpriteEffects.None, 0f);
+                }
+                else
+                {
+                    DrawSimpleText(_spriteBatch, moraleText, new Vector2(20, textY - 10), Color.White, 0.8f, 150);
+                }
+
+                // Draw Action on the right
+                string actionText = $"Action: {player.Action.ActionValue}";
+                if (_font != null)
+                {
+                    float actionScale = 0.4f;
+                    Vector2 actionSize = _font.MeasureString(actionText) * actionScale;
+                    Vector2 actionPos = new Vector2(GraphicsDevice.Viewport.Width - actionSize.X - 20, textY - actionSize.Y / 2);
+                    _spriteBatch.DrawString(_font, actionText, actionPos, Color.White, 0f, Vector2.Zero, actionScale, SpriteEffects.None, 0f);
+                }
+                else
+                {
+                    DrawSimpleText(_spriteBatch, actionText, new Vector2(GraphicsDevice.Viewport.Width - 170, textY - 10), Color.White, 0.8f, 150);
+                }
+            }
+        }
+
         // Draw arrow button
         DrawArrowButton(faction, isExpanded);
 
