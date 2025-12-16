@@ -156,6 +156,12 @@ public class Game1 : Game
         TurnManager.Instance.ChangeGamePhase += OnGamePhaseChanged;
         TurnManager.Instance.ChangeGameRound += OnGameRoundChanged;
 
+
+        foreach (var unit in _board.Units)
+        {
+            unit.Health.ChangeUnitState += unit.On_StateChanged;
+        }
+
         foreach (var player in _board.Players)
         {
             TurnManager.Instance.ChangeHand += player.On_HandChanged;
@@ -768,6 +774,30 @@ public class Game1 : Game
             return true;
         }
 
+        // Check END TURN button (below down button)
+        Rectangle endTurnButton = new Rectangle(
+            (int)trackerX,
+            (int)(phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING) + PHASE_BUTTON_SIZE + PHASE_SPACING),
+            (int)PHASE_BOX_WIDTH,
+            (int)PHASE_BOX_HEIGHT);
+
+        if (endTurnButton.Contains(mouseX, mouseY))
+        {
+            // End current player's turn: increase action by 1 and switch player
+            var currentPlayer = _board.Players.FirstOrDefault(p => p.Type == TurnManager.Instance.CurrentPlayer);
+            if (currentPlayer != null)
+            {
+                TurnManager.Instance.ChangeCurrentPlayerAction(TurnManager.Instance.CurrentPlayer, 1);
+            }
+
+            // Switch to the other player
+            TurnManager.Instance.CurrentPlayer = TurnManager.Instance.CurrentPlayer == PlayerType.Rome
+                ? PlayerType.Carthage
+                : PlayerType.Rome;
+
+            return true;
+        }
+
         return false;
     }
 
@@ -900,6 +930,13 @@ public class Game1 : Game
 
         if (endRoundButton.Contains(mouseX, mouseY))
         {
+            // Reset both players' action values to 0
+            var romePlayer = _board.Players.First(p => p.Type == PlayerType.Rome);
+            var carthagePlayer = _board.Players.First(p => p.Type == PlayerType.Carthage);
+
+            TurnManager.Instance.ChangeCurrentPlayerAction(PlayerType.Rome, -romePlayer.Action.ActionValue);
+            TurnManager.Instance.ChangeCurrentPlayerAction(PlayerType.Carthage, -carthagePlayer.Action.ActionValue);
+
             // Increment game round - this will trigger OnGameRoundChanged which resets units
             TurnManager.Instance.ChangeCurrentGameRound();
             return true;
@@ -2084,7 +2121,8 @@ public class Game1 : Game
 
         // Calculate vertical tracker position (right side of screen)
         float startY = 200;
-        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 40;
+        // Total height includes: up button, phases, down button, spacing, END TURN button, and padding
+        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + PHASE_SPACING + PHASE_BOX_HEIGHT + 40;
         float trackerX = GraphicsDevice.Viewport.Width - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
 
         // Draw background panel
@@ -2181,6 +2219,43 @@ public class Game1 : Game
         if (_font != null)
         {
             _spriteBatch.DrawString(_font, "v", new Vector2(downButton.X + 60, downButton.Y + 5), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        }
+
+        // Draw END TURN button below down button
+        Rectangle endTurnButton = new Rectangle(
+            (int)trackerX,
+            (int)(phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING) + PHASE_BUTTON_SIZE + PHASE_SPACING),
+            (int)PHASE_BOX_WIDTH,
+            (int)PHASE_BOX_HEIGHT);
+
+        Color endTurnColor = new Color(180, 120, 60);
+        _spriteBatch.Draw(_pixelTexture, endTurnButton, endTurnColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, endTurnButton, new Color(255, 200, 100), 2f);
+
+        // Draw END TURN text
+        if (_font != null)
+        {
+            string endTurnText = "END TURN";
+            float maxWidth = PHASE_BOX_WIDTH - 10;
+            float scale = 0.35f;
+
+            // Measure and adjust scale to fit
+            Vector2 textSize = _font.MeasureString(endTurnText) * scale;
+            if (textSize.X > maxWidth)
+            {
+                scale = maxWidth / _font.MeasureString(endTurnText).X;
+            }
+
+            // Recalculate size with final scale
+            textSize = _font.MeasureString(endTurnText) * scale;
+            Vector2 textPosition = new Vector2(
+                endTurnButton.X + (PHASE_BOX_WIDTH - textSize.X) / 2,
+                endTurnButton.Y + (PHASE_BOX_HEIGHT - textSize.Y) / 2);
+            _spriteBatch.DrawString(_font, endTurnText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            DrawSimpleText(_spriteBatch, "END TURN", new Vector2(endTurnButton.X + 10, endTurnButton.Y + 15), Color.White, 0.9f, (int)PHASE_BOX_WIDTH - 20);
         }
     }
 

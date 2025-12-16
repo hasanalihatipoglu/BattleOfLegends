@@ -26,7 +26,7 @@ public class MoraleSystem()
     public void End()
     {
         string winner = Faction == PlayerType.Rome ? "Carthage" : "Rome";
-        MessageController.Instance.Show($"GAME OVER ! {winner} wins!");
+        MessageController.Instance.ShowWithOkButton($"GAME OVER ! {winner} wins!");
         TurnManager.Instance.CurrentGamePhase = GamePhase.End;
     }
 
