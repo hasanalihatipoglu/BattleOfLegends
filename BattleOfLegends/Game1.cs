@@ -721,6 +721,12 @@ public class Game1 : Game
         float startY = 200;
         float trackerX = GraphicsDevice.Viewport.Width - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
 
+        // Calculate where down button will be positioned (must match DrawPhaseTracker)
+        float phaseStartY = startY + PHASE_BUTTON_SIZE + PHASE_SPACING;
+        float downButtonY = phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING);
+        float downButtonBottom = downButtonY + PHASE_BUTTON_SIZE;
+        float totalHeight = (downButtonBottom - startY) + 30 + 10; // Must match drawing calculation
+
         // Check up button (at top)
         Rectangle upButton = new Rectangle(
             (int)trackerX,
@@ -743,8 +749,7 @@ public class Game1 : Game
             return true;
         }
 
-        // Check each phase box for direct selection
-        float phaseStartY = startY + PHASE_BUTTON_SIZE + PHASE_SPACING;
+        // Check each phase box for direct selection (phaseStartY already calculated above)
         for (int i = 0; i < phases.Length; i++)
         {
             Rectangle phaseBox = new Rectangle(
@@ -774,10 +779,11 @@ public class Game1 : Game
             return true;
         }
 
-        // Check END TURN button (below down button)
+        // Check END TURN button (below the background panel, separate from frame)
+        float endTurnButtonY = startY + totalHeight + 10; // 10px gap below the frame
         Rectangle endTurnButton = new Rectangle(
             (int)trackerX,
-            (int)(phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING) + PHASE_BUTTON_SIZE + PHASE_SPACING),
+            (int)endTurnButtonY,
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
@@ -887,6 +893,11 @@ public class Game1 : Game
         float turnPhaseHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (turnPhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float startY = gamePhaseHeight + 50;
 
+        // Calculate where Carthage button ends (must match DrawCurrentPlayerTracker)
+        float carthageButtonY = startY + PHASE_BOX_HEIGHT + PHASE_SPACING;
+        float carthageButtonBottom = carthageButtonY + PHASE_BOX_HEIGHT;
+        float totalHeight = carthageButtonBottom - startY + 30 + 10; // Must match drawing calculation
+
         // Check Rome button
         Rectangle romeButton = new Rectangle(
             (int)PHASE_TRACKER_LEFT_X,
@@ -921,10 +932,12 @@ public class Game1 : Game
             return true;
         }
 
-        // Check END ROUND button
+        // Check END ROUND button (must match DrawCurrentPlayerTracker position)
+        float roundLabelY = startY + totalHeight + 20; // Round label position
+        float endRoundButtonY = roundLabelY + 25; // Button below round label
         Rectangle endRoundButton = new Rectangle(
             (int)PHASE_TRACKER_LEFT_X,
-            (int)(startY + 2 * PHASE_BOX_HEIGHT + 2 * PHASE_SPACING),
+            (int)endRoundButtonY,
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
@@ -1049,8 +1062,9 @@ public class Game1 : Game
     {
         System.Diagnostics.Debug.WriteLine($"Game round changed to: {TurnManager.Instance.CurrentGameRound}");
 
-        // Reset all units to Idle state at the start of a new round
-        if (_board?.Units != null)
+        // Reset all units to Idle state only on odd rounds (1, 3, 5, 7...)
+        int currentRound = TurnManager.Instance.CurrentGameRound;
+        if (currentRound % 2 == 1 && _board?.Units != null)
         {
             foreach (var unit in _board.Units)
             {
@@ -1059,7 +1073,11 @@ public class Game1 : Game
                     unit.State = UnitState.Idle;
                 }
             }
-            System.Diagnostics.Debug.WriteLine($"All units reset to Idle state for round {TurnManager.Instance.CurrentGameRound}");
+            System.Diagnostics.Debug.WriteLine($"All units reset to Idle state for round {currentRound} (odd round)");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine($"Units NOT reset for round {currentRound} (even round)");
         }
     }
 
@@ -2121,9 +2139,15 @@ public class Game1 : Game
 
         // Calculate vertical tracker position (right side of screen)
         float startY = 200;
-        // Total height includes: up button, phases, down button, spacing, END TURN button, and padding
-        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + PHASE_SPACING + PHASE_BOX_HEIGHT + 40;
         float trackerX = GraphicsDevice.Viewport.Width - PHASE_BOX_WIDTH - PHASE_TRACKER_RIGHT_MARGIN;
+
+        // Calculate where down button will be positioned
+        float phaseStartY = startY + PHASE_BUTTON_SIZE + PHASE_SPACING;
+        float downButtonY = phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING);
+        float downButtonBottom = downButtonY + PHASE_BUTTON_SIZE;
+
+        // Total height: from panel top (startY - 30) to down button bottom + padding
+        float totalHeight = (downButtonBottom - startY) + 30 + 10; // +30 for title space, +10 for bottom padding
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
@@ -2155,8 +2179,7 @@ public class Game1 : Game
             _spriteBatch.DrawString(_font, "^", new Vector2(upButton.X + 60, upButton.Y + 5), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
 
-        // Draw each phase box vertically
-        float phaseStartY = startY + PHASE_BUTTON_SIZE + PHASE_SPACING;
+        // Draw each phase box vertically (phaseStartY already calculated above for layout)
         for (int i = 0; i < phases.Length; i++)
         {
             var phase = phases[i];
@@ -2221,10 +2244,11 @@ public class Game1 : Game
             _spriteBatch.DrawString(_font, "v", new Vector2(downButton.X + 60, downButton.Y + 5), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
 
-        // Draw END TURN button below down button
+        // Draw END TURN button below the background panel (separate from frame)
+        float endTurnButtonY = startY + totalHeight + 10; // 10px gap below the frame
         Rectangle endTurnButton = new Rectangle(
             (int)trackerX,
-            (int)(phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING) + PHASE_BUTTON_SIZE + PHASE_SPACING),
+            (int)endTurnButtonY,
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
@@ -2267,7 +2291,14 @@ public class Game1 : Game
 
         // Calculate vertical tracker position (left side of screen)
         float startY = 200;
-        float totalHeight = PHASE_BUTTON_SIZE + PHASE_SPACING + (phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 35;
+
+        // Calculate where down button will be positioned
+        float phaseStartY = startY + PHASE_BUTTON_SIZE + PHASE_SPACING;
+        float downButtonY = phaseStartY + phases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING);
+        float downButtonBottom = downButtonY + PHASE_BUTTON_SIZE;
+
+        // Total height: from panel top (startY - 25) to down button bottom + padding
+        float totalHeight = downButtonBottom - startY + 25 + 10; // +25 for title space, +10 for bottom padding
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
@@ -2299,8 +2330,7 @@ public class Game1 : Game
             _spriteBatch.DrawString(_font, "^", new Vector2(upButton.X + 60, upButton.Y + 5), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
 
-        // Draw each phase box vertically
-        float phaseStartY = startY + PHASE_BUTTON_SIZE + PHASE_SPACING;
+        // Draw each phase box vertically (phaseStartY already calculated above for layout)
         for (int i = 0; i < phases.Length; i++)
         {
             var phase = phases[i];
@@ -2370,7 +2400,14 @@ public class Game1 : Game
         float gamePhaseHeight = 200 + PHASE_BUTTON_SIZE + PHASE_SPACING + (gamePhases.Length * (PHASE_BOX_HEIGHT + PHASE_SPACING)) + PHASE_BUTTON_SIZE + 20;
         float gapUI = 50;
         float startY = gamePhaseHeight + gapUI;
-        float totalHeight = 3 * PHASE_BOX_HEIGHT + 2 * PHASE_SPACING + 40; // Now includes END ROUND button
+
+        // Calculate where Carthage button ends (bottom of the frame content)
+        float romeButtonY = startY;
+        float carthageButtonY = startY + PHASE_BOX_HEIGHT + PHASE_SPACING;
+        float carthageButtonBottom = carthageButtonY + PHASE_BOX_HEIGHT;
+
+        // Total height: from panel top (startY - 30) to Carthage button bottom + padding
+        float totalHeight = carthageButtonBottom - startY + 30 + 10; // +30 for title space, +10 for bottom padding
 
         // Draw background panel
         Rectangle bgPanel = new Rectangle(
@@ -2452,10 +2489,30 @@ public class Game1 : Game
             DrawSimpleText(_spriteBatch, "CARTHAGE", new Vector2(carthageButton.X + 10, carthageButton.Y + 15), Color.White, 0.9f, (int)PHASE_BOX_WIDTH - 20);
         }
 
-        // Draw END ROUND button
+        // Draw Round label above END ROUND button
+        float roundLabelY = startY + totalHeight + 20; // Position above END ROUND button with more space
+        int currentRound = TurnManager.Instance.CurrentGameRound;
+        string roundText = $"Round {currentRound}";
+
+        if (_font != null)
+        {
+            float roundScale = 0.4f; // Larger scale for better visibility
+            Vector2 roundTextSize = _font.MeasureString(roundText) * roundScale;
+            Vector2 roundTextPosition = new Vector2(
+                PHASE_TRACKER_LEFT_X + (PHASE_BOX_WIDTH - roundTextSize.X) / 2,
+                roundLabelY);
+            _spriteBatch.DrawString(_font, roundText, roundTextPosition, Color.Black, 0f, Vector2.Zero, roundScale, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            DrawSimpleText(_spriteBatch, roundText, new Vector2(PHASE_TRACKER_LEFT_X + 10, roundLabelY), Color.Yellow, 0.8f, (int)PHASE_BOX_WIDTH - 20);
+        }
+
+        // Draw END ROUND button below the round label
+        float endRoundButtonY = roundLabelY + 25; // Position below round label with more space
         Rectangle endRoundButton = new Rectangle(
             (int)PHASE_TRACKER_LEFT_X,
-            (int)(startY + 2 * PHASE_BOX_HEIGHT + 2 * PHASE_SPACING),
+            (int)endRoundButtonY,
             (int)PHASE_BOX_WIDTH,
             (int)PHASE_BOX_HEIGHT);
 
