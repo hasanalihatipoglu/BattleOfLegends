@@ -196,6 +196,12 @@ public class Game1 : Game
         // Initialize game state
         _gameState = new GameState(_board);
 
+        // Subscribe GameState to TurnManager events
+        TurnManager.Instance.ChangePlayer += _gameState.On_PlayerChanged;
+        TurnManager.Instance.ChangeTurnPhase += _gameState.On_TurnPhaseChanged;
+        TurnManager.Instance.ChangeGamePhase += _gameState.On_GamePhaseChanged;
+        TurnManager.Instance.ChangeGameRound += _gameState.On_GameRoundChanged;
+
         // Initialize card cache
         UpdateCardCache();
 
@@ -779,8 +785,9 @@ public class Game1 : Game
             return true;
         }
 
-        // Check END TURN button (below the background panel, separate from frame)
-        float endTurnButtonY = startY + totalHeight + 10; // 10px gap below the frame
+        // Check END TURN button - position to align with END ROUND button on left side
+        // Must match DrawPhaseTracker calculation
+        float endTurnButtonY = startY + totalHeight + 45; // Same as END ROUND: 20 (label space) + 25 (button offset)
         Rectangle endTurnButton = new Rectangle(
             (int)trackerX,
             (int)endTurnButtonY,
@@ -2244,8 +2251,9 @@ public class Game1 : Game
             _spriteBatch.DrawString(_font, "v", new Vector2(downButton.X + 60, downButton.Y + 5), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
         }
 
-        // Draw END TURN button below the background panel (separate from frame)
-        float endTurnButtonY = startY + totalHeight + 10; // 10px gap below the frame
+        // Draw END TURN button - position to align with END ROUND button on left side
+        // END ROUND button Y = startY + totalHeight + 20 (round label) + 25 (button offset)
+        float endTurnButtonY = startY + totalHeight + 45; // Same as END ROUND: 20 (label space) + 25 (button offset)
         Rectangle endTurnButton = new Rectangle(
             (int)trackerX,
             (int)endTurnButtonY,

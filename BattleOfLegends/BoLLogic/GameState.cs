@@ -1,3 +1,5 @@
+using System.Linq;
+
 namespace BoLLogic;
 
 public class GameState(Board board)
@@ -36,9 +38,39 @@ public class GameState(Board board)
         CurrentGameRound = TurnManager.Instance.CurrentGameRound;
         board.GameRound = CurrentGameRound;
 
-        if (CurrentGameRound == Board.EndRound)
+        System.Diagnostics.Debug.WriteLine($"On_GameRoundChanged: CurrentGameRound={CurrentGameRound}, EndRound={Board.EndRound}");
+
+        if (CurrentGameRound >= Board.EndRound)
         {
-            MessageController.Instance.Show("GAME OVER !");
+            // Determine winner based on morale
+            var romePlayer = Board.Players.FirstOrDefault(p => p.Type == PlayerType.Rome);
+            var carthagePlayer = Board.Players.FirstOrDefault(p => p.Type == PlayerType.Carthage);
+
+            if (romePlayer != null && carthagePlayer != null)
+            {
+                int romeMorale = romePlayer.Morale.MoraleValue;
+                int carthageMorale = carthagePlayer.Morale.MoraleValue;
+
+                string gameOverMessage;
+                if (romeMorale > carthageMorale)
+                {
+                    gameOverMessage = $"GAME OVER!\n\nROME WINS!\nRome Morale: {romeMorale}\nCarthage Morale: {carthageMorale}";
+                }
+                else if (carthageMorale > romeMorale)
+                {
+                    gameOverMessage = $"GAME OVER!\n\nCARTHAGE WINS!\nRome Morale: {romeMorale}\nCarthage Morale: {carthageMorale}";
+                }
+                else
+                {
+                    gameOverMessage = $"GAME OVER!\n\nDRAW!\nBoth armies have equal morale: {romeMorale}";
+                }
+
+                MessageController.Instance.ShowWithOkButton(gameOverMessage);
+            }
+            else
+            {
+                MessageController.Instance.ShowWithOkButton("GAME OVER!");
+            }
         }
 
         if (CurrentGameRound % 2 == 1)
