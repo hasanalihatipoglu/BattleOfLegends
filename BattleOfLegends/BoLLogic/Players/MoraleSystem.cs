@@ -9,15 +9,22 @@ public class MoraleSystem()
 
     public void Change(int moraleAmount)
     {
+        int previousValue = MoraleValue;
+
         MoraleValue += moraleAmount;
         System.Diagnostics.Debug.WriteLine($"Morale changed for {Faction}: {moraleAmount}");
 
-        if (MoraleValue < 0) 
+        if (MoraleValue < 0)
         {
             MoraleValue = 0;
         }
 
-        if (MoraleValue == 0) 
+        // Record morale change in history
+        HistoryManager.Instance.RecordAction(
+            new MoraleChangeAction(Faction, previousValue, moraleAmount)
+        );
+
+        if (MoraleValue == 0)
         {
             End();
         }

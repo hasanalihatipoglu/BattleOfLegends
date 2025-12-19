@@ -26,7 +26,7 @@ public class Leader(PlayerType faction) : Unit
 
     private List<CardType> abilities = new List<CardType>
     {
-        CardType.Withdraw,
+        //CardType.Withdraw,
         CardType.CavalryCharge,
         CardType.CavalryCounter,
         CardType.CavalryPursue,

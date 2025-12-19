@@ -140,6 +140,15 @@ public abstract class Card : IDisposable
         var oldState = this.State;
         this.State = state;
         System.Diagnostics.Debug.WriteLine($"*** CARD STATE CHANGED: {this.Type} ({this.Faction}) from {oldState} -> {state}");
+
+        // Record card state change in history (skip ReadyToPlay transitions as they're automatic)
+        if (oldState != CardState.ReadyToPlay && state != CardState.ReadyToPlay)
+        {
+            HistoryManager.Instance.RecordAction(
+                new CardPlayAction(this.Faction, this, oldState, state)
+            );
+        }
+
         ChangeState?.Invoke(this, EventArgs.Empty);
     }
 

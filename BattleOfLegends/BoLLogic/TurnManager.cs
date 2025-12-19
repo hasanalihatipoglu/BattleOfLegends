@@ -104,7 +104,14 @@ public sealed class TurnManager
 
     public void ChangeCurrentPlayer()
     {
+        PlayerType previousPlayer = CurrentPlayer;
         CurrentPlayer = CurrentPlayer.Opponent();
+
+        // Record player change in history
+        HistoryManager.Instance.RecordAction(
+            new PlayerChangeAction(previousPlayer, CurrentPlayer)
+        );
+
         ChangePlayer?.Invoke(this, EventArgs.Empty);
     }
 
@@ -113,7 +120,14 @@ public sealed class TurnManager
         // System.Diagnostics.Debug.WriteLine($"SetCurrentPlayer called: trying to set to {player}, current is {CurrentPlayer}");
         if (CurrentPlayer != player)
         {
+            PlayerType previousPlayer = CurrentPlayer;
             CurrentPlayer = player;
+
+            // Record player change in history
+            HistoryManager.Instance.RecordAction(
+                new PlayerChangeAction(previousPlayer, CurrentPlayer)
+            );
+
             // System.Diagnostics.Debug.WriteLine($"Player changed to {CurrentPlayer}, raising ChangePlayer event");
             ChangePlayer?.Invoke(this, EventArgs.Empty);
         }
@@ -121,6 +135,14 @@ public sealed class TurnManager
         {
             // System.Diagnostics.Debug.WriteLine($"Player is already {player}, not changing");
         }
+    }
+
+    /// <summary>
+    /// Trigger the ChangePlayer event without recording in history (for undo/redo)
+    /// </summary>
+    public void TriggerPlayerChangeEvent()
+    {
+        ChangePlayer?.Invoke(this, EventArgs.Empty);
     }
 
 

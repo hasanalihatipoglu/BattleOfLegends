@@ -100,6 +100,13 @@ public class Game1 : Game
     private const float ROLL_BUTTON_WIDTH = 120f;
     private const float ROLL_BUTTON_HEIGHT = 60f;
 
+    // Undo/Redo button constants
+    private const float UNDO_REDO_BUTTON_WIDTH = 100f;
+    private const float UNDO_REDO_BUTTON_HEIGHT = 40f;
+    private const float UNDO_REDO_BUTTON_SPACING = 10f;
+    private const float UNDO_REDO_BUTTON_RIGHT_MARGIN = 10f;
+    private const float UNDO_REDO_BUTTON_TOP_MARGIN = 10f;
+
     // Debug display settings
     private bool _showUnitStates = true; // Toggle to show/hide unit states for testing
 
@@ -201,6 +208,10 @@ public class Game1 : Game
         TurnManager.Instance.ChangeTurnPhase += _gameState.On_TurnPhaseChanged;
         TurnManager.Instance.ChangeGamePhase += _gameState.On_GamePhaseChanged;
         TurnManager.Instance.ChangeGameRound += _gameState.On_GameRoundChanged;
+
+        // Initialize history manager
+        HistoryManager.Instance.Initialize(_board);
+        System.Diagnostics.Debug.WriteLine("========== HISTORY MANAGER INITIALIZED ==========");
 
         // Initialize card cache
         UpdateCardCache();
@@ -580,8 +591,13 @@ public class Game1 : Game
                 else
                 {
                     // Combat declared but not in Roll phase - allow normal interactions
+                    // Check if clicking on undo/redo buttons (screen space)
+                    if (HandleUndoRedoButtonClick(mouseState.X, mouseState.Y))
+                    {
+                        // Undo/Redo button was clicked, don't process other clicks
+                    }
                     // Check if clicking on current player tracker (screen space)
-                    if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
+                    else if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
                     {
                         // Current player tracker was clicked, don't process other clicks
                     }
@@ -647,8 +663,13 @@ public class Game1 : Game
             else
             {
                 // No modal message and no combat declared - normal interactions
+                // Check if clicking on undo/redo buttons (screen space)
+                if (HandleUndoRedoButtonClick(mouseState.X, mouseState.Y))
+                {
+                    // Undo/Redo button was clicked, don't process other clicks
+                }
                 // Check if clicking on current player tracker (screen space)
-                if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
+                else if (HandleCurrentPlayerTrackerClick(mouseState.X, mouseState.Y))
                 {
                     // Current player tracker was clicked, don't process other clicks
                 }
@@ -797,16 +818,24 @@ public class Game1 : Game
         if (endTurnButton.Contains(mouseX, mouseY))
         {
             // End current player's turn: increase action by 1 and switch player
-            var currentPlayer = _board.Players.FirstOrDefault(p => p.Type == TurnManager.Instance.CurrentPlayer);
+            PlayerType currentPlayerType = TurnManager.Instance.CurrentPlayer;
+            PlayerType nextPlayerType = currentPlayerType == PlayerType.Rome ? PlayerType.Carthage : PlayerType.Rome;
+
+            var currentPlayer = _board.Players.FirstOrDefault(p => p.Type == currentPlayerType);
             if (currentPlayer != null)
             {
-                TurnManager.Instance.ChangeCurrentPlayerAction(TurnManager.Instance.CurrentPlayer, 1);
-            }
+                int previousActionValue = currentPlayer.Action.ActionValue;
 
-            // Switch to the other player
-            TurnManager.Instance.CurrentPlayer = TurnManager.Instance.CurrentPlayer == PlayerType.Rome
-                ? PlayerType.Carthage
-                : PlayerType.Rome;
+                // Record as a single compound action in history
+                HistoryManager.Instance.RecordAction(
+                    new EndTurnAction(currentPlayerType, nextPlayerType, previousActionValue)
+                );
+
+                // Execute the action
+                currentPlayer.Action.ActionValue++;
+                TurnManager.Instance.CurrentPlayer = nextPlayerType;
+                TurnManager.Instance.TriggerPlayerChangeEvent();
+            }
 
             return true;
         }
@@ -959,6 +988,79 @@ public class Game1 : Game
 
             // Increment game round - this will trigger OnGameRoundChanged which resets units
             TurnManager.Instance.ChangeCurrentGameRound();
+            return true;
+        }
+
+        return false;
+    }
+
+    private bool HandleUndoRedoButtonClick(int mouseX, int mouseY)
+    {
+        float rightX = GraphicsDevice.Viewport.Width - UNDO_REDO_BUTTON_RIGHT_MARGIN;
+
+        // SAVE button (top)
+        float saveButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
+        float saveButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
+        Rectangle saveButton = new Rectangle(
+            (int)saveButtonX,
+            (int)saveButtonY,
+            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_HEIGHT);
+
+        if (saveButton.Contains(mouseX, mouseY))
+        {
+            HistoryManager.Instance.AutoSaveHistory();
+            MessageController.Instance.Show("Game history saved!");
+            return true;
+        }
+
+        // UNDO button
+        float undoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
+        float undoButtonY = saveButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        Rectangle undoButton = new Rectangle(
+            (int)undoButtonX,
+            (int)undoButtonY,
+            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_HEIGHT);
+
+        if (undoButton.Contains(mouseX, mouseY) && HistoryManager.Instance.CanUndo)
+        {
+            bool success = HistoryManager.Instance.Undo();
+            if (success)
+            {
+                MessageController.Instance.Show("Action undone");
+                // Clear any active selections
+                TurnManager.Instance.SelectedUnit = null;
+                TurnManager.Instance.SelectedCard = null;
+                PathFinder.Instance.ResetAll();
+            }
+            else
+            {
+                MessageController.Instance.Show("Failed to undo action");
+            }
+            return true;
+        }
+
+        // REDO button
+        float redoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
+        float redoButtonY = undoButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        Rectangle redoButton = new Rectangle(
+            (int)redoButtonX,
+            (int)redoButtonY,
+            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_HEIGHT);
+
+        if (redoButton.Contains(mouseX, mouseY) && HistoryManager.Instance.CanRedo)
+        {
+            bool success = HistoryManager.Instance.Redo();
+            if (success)
+            {
+                MessageController.Instance.Show("Action redone");
+            }
+            else
+            {
+                MessageController.Instance.Show("Failed to redo action");
+            }
             return true;
         }
 
@@ -1541,6 +1643,7 @@ public class Game1 : Game
         DrawGamePhaseTracker();
         DrawPhaseTracker();
         DrawCurrentPlayerTracker();
+        DrawUndoRedoButtons();
         DrawCards();
 
         // Draw resolving card (on top of cards)
@@ -2552,6 +2655,86 @@ public class Game1 : Game
         else
         {
             DrawSimpleText(_spriteBatch, "END ROUND", new Vector2(endRoundButton.X + 10, endRoundButton.Y + 15), Color.White, 0.9f, (int)PHASE_BOX_WIDTH - 20);
+        }
+    }
+
+    private void DrawUndoRedoButtons()
+    {
+        // Position buttons in upper right corner
+        float rightX = GraphicsDevice.Viewport.Width - UNDO_REDO_BUTTON_RIGHT_MARGIN;
+
+        // SAVE HISTORY button (top)
+        float saveButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
+        float saveButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
+        Rectangle saveButton = new Rectangle(
+            (int)saveButtonX,
+            (int)saveButtonY,
+            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_HEIGHT);
+
+        Color saveColor = new Color(100, 180, 100); // Green
+        _spriteBatch.Draw(_pixelTexture, saveButton, saveColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, saveButton, new Color(150, 255, 150), 2f);
+
+        if (_font != null)
+        {
+            string saveText = "SAVE";
+            float scale = 0.35f;
+            Vector2 textSize = _font.MeasureString(saveText) * scale;
+            Vector2 textPosition = new Vector2(
+                saveButton.X + (UNDO_REDO_BUTTON_WIDTH - textSize.X) / 2,
+                saveButton.Y + (UNDO_REDO_BUTTON_HEIGHT - textSize.Y) / 2);
+            _spriteBatch.DrawString(_font, saveText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
+
+        // UNDO button (below SAVE)
+        float undoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
+        float undoButtonY = saveButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        Rectangle undoButton = new Rectangle(
+            (int)undoButtonX,
+            (int)undoButtonY,
+            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_HEIGHT);
+
+        bool canUndo = HistoryManager.Instance.CanUndo;
+        Color undoColor = canUndo ? new Color(200, 150, 100) : new Color(100, 75, 50);
+        _spriteBatch.Draw(_pixelTexture, undoButton, undoColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, undoButton, canUndo ? new Color(255, 200, 120) : new Color(120, 90, 60), 2f);
+
+        if (_font != null)
+        {
+            string undoText = $"UNDO ({HistoryManager.Instance.UndoStackCount})";
+            float scale = 0.3f;
+            Vector2 textSize = _font.MeasureString(undoText) * scale;
+            Vector2 textPosition = new Vector2(
+                undoButton.X + (UNDO_REDO_BUTTON_WIDTH - textSize.X) / 2,
+                undoButton.Y + (UNDO_REDO_BUTTON_HEIGHT - textSize.Y) / 2);
+            _spriteBatch.DrawString(_font, undoText, textPosition, canUndo ? Color.White : Color.Gray, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
+        }
+
+        // REDO button (below UNDO)
+        float redoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
+        float redoButtonY = undoButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        Rectangle redoButton = new Rectangle(
+            (int)redoButtonX,
+            (int)redoButtonY,
+            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_HEIGHT);
+
+        bool canRedo = HistoryManager.Instance.CanRedo;
+        Color redoColor = canRedo ? new Color(100, 150, 200) : new Color(50, 75, 100);
+        _spriteBatch.Draw(_pixelTexture, redoButton, redoColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, redoButton, canRedo ? new Color(120, 200, 255) : new Color(60, 90, 120), 2f);
+
+        if (_font != null)
+        {
+            string redoText = $"REDO ({HistoryManager.Instance.RedoStackCount})";
+            float scale = 0.3f;
+            Vector2 textSize = _font.MeasureString(redoText) * scale;
+            Vector2 textPosition = new Vector2(
+                redoButton.X + (UNDO_REDO_BUTTON_WIDTH - textSize.X) / 2,
+                redoButton.Y + (UNDO_REDO_BUTTON_HEIGHT - textSize.Y) / 2);
+            _spriteBatch.DrawString(_font, redoText, textPosition, canRedo ? Color.White : Color.Gray, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
     }
 

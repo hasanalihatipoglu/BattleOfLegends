@@ -11,19 +11,26 @@ public class ActionSystem()
 
     public void Change(int actionAmount)
     {
+        int previousValue = ActionValue;
+
         if (ActionValue + actionAmount <= MaxAction)
         {
             ActionValue += actionAmount;
             IsMaxActionReached = false;
             System.Diagnostics.Debug.WriteLine($"Action changed for {Faction}: {actionAmount}");
+
+            // Record action value change in history
+            HistoryManager.Instance.RecordAction(
+                new ActionValueChangeAction(Faction, previousValue, actionAmount)
+            );
         }
 
-        else 
+        else
         {
             End();
             IsMaxActionReached = true;
         }
-       
+
     }
 
     public void End()
