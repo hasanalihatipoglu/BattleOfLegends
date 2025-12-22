@@ -89,13 +89,15 @@ public abstract class Card : IDisposable
                         return;
                     }
 
+                    // Pass the hand delta (+1) so history knows what the hand value will be after
+                    ChangeCardState(CardState.InHand, handDelta: 1);
                     TurnManager.Instance.ChangeCurrentPlayerHand(Faction, 1);
-                    ChangeCardState(CardState.InHand);
                     break;
 
                 case CardState.InHand:
+                    // Pass the hand delta (-1) so history knows what the hand value will be after
+                    ChangeCardState(CardState.InDeck, handDelta: -1);
                     TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, -1);
-                    ChangeCardState(CardState.InDeck);
                     break;
             }
         }
@@ -111,7 +113,7 @@ public abstract class Card : IDisposable
                     if(TurnManager.Instance.PlayCard(this)==true)
                     {
                         // Card moves to center for resolution
-                        ChangeCardState(CardState.Resolving);
+                        ChangeCardState(CardState.Resolving, handDelta: 0);
                     }
                     break;
 
@@ -119,13 +121,14 @@ public abstract class Card : IDisposable
                     // Click on resolving card to discard it
                     if (IsDiscard)
                     {
+                        // Pass the hand delta (-1) for discarding
+                        ChangeCardState(CardState.Discarded, handDelta: -1);
                         TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, -1);
-                        ChangeCardState(CardState.Discarded);
                     }
                     else
                     {
-                        // Non-discard cards go back to hand
-                        ChangeCardState(CardState.InHand);
+                        // Non-discard cards go back to hand (no hand change)
+                        ChangeCardState(CardState.InHand, handDelta: 0);
                     }
                     break;
             }
@@ -135,17 +138,31 @@ public abstract class Card : IDisposable
     }
 
 
-    public void ChangeCardState(CardState state)
+    public void ChangeCardState(CardState state, int handDelta = 0)
     {
         var oldState = this.State;
+
+        // Capture hand value BEFORE any changes
+        var player = GameManager.Instance.CurrentBoard?.Players.FirstOrDefault(p => p.Type == this.Faction);
+        int handValueBefore = player?.Hand.HandValue ?? 0;
+
         this.State = state;
         System.Diagnostics.Debug.WriteLine($"*** CARD STATE CHANGED: {this.Type} ({this.Faction}) from {oldState} -> {state}");
 
-        // Record card state change in history (skip ReadyToPlay transitions as they're automatic)
-        if (oldState != CardState.ReadyToPlay && state != CardState.ReadyToPlay)
+        // Record card state change in history
+        // Skip automatic ReadyToPlay ↔ InHand transitions, but record user actions like ReadyToPlay → Resolving
+        bool isAutomaticReadyToPlayTransition = (oldState == CardState.ReadyToPlay && state == CardState.InHand) ||
+                                                 (oldState == CardState.InHand && state == CardState.ReadyToPlay);
+
+        if (!isAutomaticReadyToPlayTransition)
         {
+            // Calculate hand value after based on the delta that will be applied
+            int handValueAfter = handValueBefore + handDelta;
+
+            System.Diagnostics.Debug.WriteLine($"[ChangeCardState] Recording: {this.Faction} {this.Type}, Hand {handValueBefore} -> {handValueAfter} (delta={handDelta}), State {oldState} -> {state}");
+
             HistoryManager.Instance.RecordAction(
-                new CardPlayAction(this.Faction, this, oldState, state)
+                new CardPlayAction(this.Faction, this, oldState, state, handValueBefore, handValueAfter)
             );
         }
 

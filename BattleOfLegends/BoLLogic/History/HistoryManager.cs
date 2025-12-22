@@ -56,32 +56,45 @@ public sealed class HistoryManager
     }
 
     /// <summary>
+    /// Get the notation of the next action that would be undone
+    /// </summary>
+    public string PeekUndoAction()
+    {
+        if (!CanUndo)
+            return null;
+
+        return _undoStack.Peek().GetNotation();
+    }
+
+    /// <summary>
     /// Undo the last action
     /// </summary>
-    public bool Undo()
+    /// <returns>Tuple of (success, actionDescription)</returns>
+    public (bool success, string description) Undo()
     {
         if (!CanUndo || _board == null)
-            return false;
+            return (false, null);
 
         _isUndoingOrRedoing = true;
         try
         {
             var action = _undoStack.Pop();
+            string description = action.GetNotation();
             bool success = action.Undo(_board);
 
             if (success)
             {
                 _redoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Undid: {action.GetNotation()}");
+                System.Diagnostics.Debug.WriteLine($"[History] Undid: {description}");
             }
             else
             {
                 // If undo failed, put it back on the undo stack
                 _undoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Failed to undo: {action.GetNotation()}");
+                System.Diagnostics.Debug.WriteLine($"[History] Failed to undo: {description}");
             }
 
-            return success;
+            return (success, description);
         }
         finally
         {
@@ -90,32 +103,45 @@ public sealed class HistoryManager
     }
 
     /// <summary>
+    /// Get the notation of the next action that would be redone
+    /// </summary>
+    public string PeekRedoAction()
+    {
+        if (!CanRedo)
+            return null;
+
+        return _redoStack.Peek().GetNotation();
+    }
+
+    /// <summary>
     /// Redo the last undone action
     /// </summary>
-    public bool Redo()
+    /// <returns>Tuple of (success, actionDescription)</returns>
+    public (bool success, string description) Redo()
     {
         if (!CanRedo || _board == null)
-            return false;
+            return (false, null);
 
         _isUndoingOrRedoing = true;
         try
         {
             var action = _redoStack.Pop();
+            string description = action.GetNotation();
             bool success = action.Execute(_board);
 
             if (success)
             {
                 _undoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Redid: {action.GetNotation()}");
+                System.Diagnostics.Debug.WriteLine($"[History] Redid: {description}");
             }
             else
             {
                 // If redo failed, put it back on the redo stack
                 _redoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Failed to redo: {action.GetNotation()}");
+                System.Diagnostics.Debug.WriteLine($"[History] Failed to redo: {description}");
             }
 
-            return success;
+            return (success, description);
         }
         finally
         {

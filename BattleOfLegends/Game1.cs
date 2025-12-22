@@ -1025,10 +1025,10 @@ public class Game1 : Game
 
         if (undoButton.Contains(mouseX, mouseY) && HistoryManager.Instance.CanUndo)
         {
-            bool success = HistoryManager.Instance.Undo();
+            var (success, description) = HistoryManager.Instance.Undo();
             if (success)
             {
-                MessageController.Instance.Show("Action undone");
+                MessageController.Instance.Show($"Undone: {description}");
                 // Clear any active selections
                 TurnManager.Instance.SelectedUnit = null;
                 TurnManager.Instance.SelectedCard = null;
@@ -1036,7 +1036,7 @@ public class Game1 : Game
             }
             else
             {
-                MessageController.Instance.Show("Failed to undo action");
+                MessageController.Instance.Show($"Failed to undo: {description}");
             }
             return true;
         }
@@ -1052,14 +1052,14 @@ public class Game1 : Game
 
         if (redoButton.Contains(mouseX, mouseY) && HistoryManager.Instance.CanRedo)
         {
-            bool success = HistoryManager.Instance.Redo();
+            var (success, description) = HistoryManager.Instance.Redo();
             if (success)
             {
-                MessageController.Instance.Show("Action redone");
+                MessageController.Instance.Show($"Redone: {description}");
             }
             else
             {
-                MessageController.Instance.Show("Failed to redo action");
+                MessageController.Instance.Show($"Failed to redo: {description}");
             }
             return true;
         }

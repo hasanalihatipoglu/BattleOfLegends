@@ -64,9 +64,9 @@ public class Board
 
             var newPlayer = new Player(playerType)
             {
-                Morale = new MoraleSystem { MoraleValue = player.Morale },
-                Hand = new HandSystem { MaxHand = player.maxHand, HandValue = player.Hand },
-                Action = new ActionSystem { MaxAction = player.maxAction, ActionValue = player.Action }
+                Morale = new MoraleSystem { MoraleValue = player.Morale, Faction = playerType },
+                Hand = new HandSystem { MaxHand = player.maxHand, HandValue = player.Hand, Faction = playerType },
+                Action = new ActionSystem { MaxAction = player.maxAction, ActionValue = player.Action, Faction = playerType }
             };
 
             Players.Add(newPlayer);

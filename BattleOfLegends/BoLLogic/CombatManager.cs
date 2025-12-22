@@ -388,9 +388,28 @@ public sealed class CombatManager
 
     public bool CalculateCombat(AttackType type)
     {
+        // Record health before combat
+        int attackerHealthBefore = Attacker.Health.GetHealth();
+        int targetHealthBefore = Target.Health.GetHealth();
 
         Target.Health.Damage(NumberOfWounds);
 
+        // Record health after combat
+        int attackerHealthAfter = Attacker.Health.GetHealth();
+        int targetHealthAfter = Target.Health.GetHealth();
+
+        // Record combat action in history
+        HistoryManager.Instance.RecordAction(
+            new CombatAction(
+                Attacker.Faction,
+                Attacker,
+                Target,
+                attackerHealthBefore,
+                targetHealthBefore,
+                attackerHealthAfter,
+                targetHealthAfter
+            )
+        );
 
         if (Target.State != UnitState.Dead && NumberOfRetreats > 0)
         {
