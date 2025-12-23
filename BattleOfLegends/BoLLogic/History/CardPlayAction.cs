@@ -54,6 +54,13 @@ public class CardPlayAction : GameAction
         // Change card state
         card.State = NewState;
 
+        // Notify UI that card state changed (e.g., clear _resolvingCard)
+        card.NotifyStateChanged();
+
+        // Trigger automatic state update to handle ReadyToPlay ↔ InHand transitions
+        // This ensures the card is in the correct state based on current turn/phase
+        card.On_Update(null, EventArgs.Empty);
+
         System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Execute] {Player} hand: {HandValueBefore} -> {HandValueAfter}, Card {CardType}: {PreviousState} -> {NewState}");
         return true;
     }
@@ -83,6 +90,13 @@ public class CardPlayAction : GameAction
 
         // Restore card state
         card.State = PreviousState;
+
+        // Notify UI that card state changed (e.g., clear _resolvingCard)
+        card.NotifyStateChanged();
+
+        // Trigger automatic state update to handle ReadyToPlay ↔ InHand transitions
+        // This ensures the card is in the correct state based on current turn/phase
+        card.On_Update(null, EventArgs.Empty);
 
         System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] AFTER: {Player} hand={player.Hand.HandValue}, Card {CardType} state={card.State}");
         System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] Expected: hand {HandValueAfter} -> {HandValueBefore}, state {NewState} -> {PreviousState}");

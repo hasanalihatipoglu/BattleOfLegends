@@ -1126,22 +1126,35 @@ public class Game1 : Game
         {
             System.Diagnostics.Debug.WriteLine($"Card state changed: {card.Type} ({card.Faction}) -> {card.State}");
 
-            // Handle card going into Resolving state
-            if (card.State == CardState.Resolving)
+            // Don't trigger modal UI during undo/redo operations
+            if (!HistoryManager.Instance.IsUndoingOrRedoing)
             {
-                StartCardResolution(card);
-            }
-            // Handle card leaving Resolving state
-            else if (_resolvingCard == card && card.State != CardState.Resolving)
-            {
-                // Check if it was an immediate card (FirstStrike or CavalryCounter)
-                if (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter)
+                // Handle card going into Resolving state
+                if (card.State == CardState.Resolving)
                 {
-                    _immediateCardWasDismissed = true;
+                    StartCardResolution(card);
                 }
+                // Handle card leaving Resolving state
+                else if (_resolvingCard == card && card.State != CardState.Resolving)
+                {
+                    // Check if it was an immediate card (FirstStrike or CavalryCounter)
+                    if (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter)
+                    {
+                        _immediateCardWasDismissed = true;
+                    }
 
-                _resolvingCard = null;
-                _resolvingCardAnimProgress = 0f;
+                    _resolvingCard = null;
+                    _resolvingCardAnimProgress = 0f;
+                }
+            }
+            else
+            {
+                // During undo/redo, ensure _resolvingCard is cleared if card is no longer resolving
+                if (_resolvingCard == card && card.State != CardState.Resolving)
+                {
+                    _resolvingCard = null;
+                    _resolvingCardAnimProgress = 0f;
+                }
             }
         }
     }
@@ -2352,6 +2365,26 @@ public class Game1 : Game
         if (_font != null)
         {
             _spriteBatch.DrawString(_font, "v", new Vector2(downButton.X + 60, downButton.Y + 5), Color.White, 0f, Vector2.Zero, 0.6f, SpriteEffects.None, 0f);
+        }
+
+        // Draw Turn label above END TURN button
+        float turnLabelY = startY + totalHeight + 20; // Position above END TURN button with more space
+        PlayerType currentTurn = TurnManager.Instance.CurrentPlayer;
+        string turnText = currentTurn == PlayerType.Rome ? "Rome's Turn" : "Carthage's Turn";
+        Color turnColor = currentTurn == PlayerType.Rome ? new Color(100, 150, 255) : new Color(255, 100, 100);
+
+        if (_font != null)
+        {
+            float turnScale = 0.4f; // Larger scale for better visibility
+            Vector2 turnTextSize = _font.MeasureString(turnText) * turnScale;
+            Vector2 turnTextPosition = new Vector2(
+                trackerX + (PHASE_BOX_WIDTH - turnTextSize.X) / 2,
+                turnLabelY);
+            _spriteBatch.DrawString(_font, turnText, turnTextPosition, turnColor, 0f, Vector2.Zero, turnScale, SpriteEffects.None, 0f);
+        }
+        else
+        {
+            DrawSimpleText(_spriteBatch, turnText, new Vector2(trackerX + 10, turnLabelY), turnColor, 0.8f, (int)PHASE_BOX_WIDTH - 20);
         }
 
         // Draw END TURN button - position to align with END ROUND button on left side

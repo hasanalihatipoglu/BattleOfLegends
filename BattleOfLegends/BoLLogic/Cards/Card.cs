@@ -14,8 +14,6 @@ public abstract class Card : IDisposable
     public Unit Unit { get; set; }
     public CardState State { get; set; }
  
-
-   // CardPosition playPosition = new CardPosition(20, 300);
    
 
     public event EventHandler ChangeState;
@@ -166,6 +164,14 @@ public abstract class Card : IDisposable
             );
         }
 
+        ChangeState?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Notify subscribers that the card state has changed (for undo/redo operations)
+    /// </summary>
+    public void NotifyStateChanged()
+    {
         ChangeState?.Invoke(this, EventArgs.Empty);
     }
 
