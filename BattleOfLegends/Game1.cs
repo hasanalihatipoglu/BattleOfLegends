@@ -58,7 +58,6 @@ public class Game1 : Game
     private const float CARD_WIDTH = 80f;
     private const float CARD_HEIGHT = 120f;
     private const float CARD_SPACING = 10f;
-    private const float CARD_HAND_Y = 20f; // Distance from bottom of screen
 
     // Card panel constants
     private const float PANEL_COLLAPSED_HEIGHT = 40f; // Height when collapsed (showing arrow button)
@@ -103,9 +102,8 @@ public class Game1 : Game
     // Undo/Redo button constants
     private const float UNDO_REDO_BUTTON_WIDTH = 100f;
     private const float UNDO_REDO_BUTTON_HEIGHT = 40f;
-    private const float UNDO_REDO_BUTTON_SPACING = 10f;
     private const float UNDO_REDO_BUTTON_RIGHT_MARGIN = 10f;
-    private const float UNDO_REDO_BUTTON_TOP_MARGIN = 10f;
+    private const float UNDO_REDO_BUTTON_TOP_MARGIN = 70f;
 
     // Debug display settings
     private bool _showUnitStates = true; // Toggle to show/hide unit states for testing
@@ -176,24 +174,20 @@ public class Game1 : Game
             CombatManager.Instance.ChangeMorale += player.On_MoraleChanged;
         }
 
-        // Subscribe to card state changes to update cache
-      //  System.Diagnostics.Debug.WriteLine($"========== GAME1: SUBSCRIBING TO {_board.Cards.Count} CARD STATE CHANGES ==========");
-        foreach (var card in _board.Cards)
-        {
-            card.ChangeState += OnCardStateChanged;
-         //   System.Diagnostics.Debug.WriteLine($"  Subscribed to {card.Type} ({card.Faction}) state changes");
-        }
 
-        // CRITICAL: Ensure all cards are subscribed to turn phase AND player changes
        // System.Diagnostics.Debug.WriteLine($"========== GAME1: RE-SUBSCRIBING CARDS TO TURN EVENTS ==========");
         foreach (var card in _board.Cards)
-        {
+        {            
+            // Subscribe to card state changes to update cache        
+            card.ChangeState += OnCardStateChanged;
+            //  System.Diagnostics.Debug.WriteLine($"  Subscribed to {card.Type} ({card.Faction}) state changes");
+
             // Unsubscribe first to avoid duplicates, then resubscribe
             TurnManager.Instance.ChangeTurnPhase -= card.On_Update;
             TurnManager.Instance.ChangeTurnPhase += card.On_Update;
             TurnManager.Instance.ChangePlayer -= card.On_Update;
             TurnManager.Instance.ChangePlayer += card.On_Update;
-          //  System.Diagnostics.Debug.WriteLine($"  Resubscribed {card.Type} ({card.Faction}) to turn phase and player change events");
+            //  System.Diagnostics.Debug.WriteLine($"  Resubscribed {card.Type} ({card.Faction}) to turn phase and player change events");
         }
 
         // Trigger initial card state update
@@ -233,10 +227,6 @@ public class Game1 : Game
 
       //  System.Diagnostics.Debug.WriteLine("========== UPDATING CARD CACHE ==========");
       //  System.Diagnostics.Debug.WriteLine($"Total cards: {_board.Cards.Count}");
-        foreach (var card in _board.Cards)
-        {
-     //       System.Diagnostics.Debug.WriteLine($"  {card.Type} ({card.Faction}) - State: {card.State}");
-        }
 
         _romeCardsCache = _board.Cards.Where(c => c.Faction == PlayerType.Rome &&
                                                    (c.State == CardState.InDeck ||
@@ -379,6 +369,14 @@ public class Game1 : Game
         {
             _showUnitStates = !_showUnitStates;
             MessageController.Instance.Show($"Unit state display: {(_showUnitStates ? "ON" : "OFF")}");
+        }
+
+        // Save history with Ctrl+S
+        if (keyboardState.IsKeyDown(Keys.LeftControl) && keyboardState.IsKeyDown(Keys.S) &&
+            !(_previousKeyboardState.IsKeyDown(Keys.LeftControl) && _previousKeyboardState.IsKeyDown(Keys.S)))
+        {
+            HistoryManager.Instance.AutoSaveHistory();
+            MessageController.Instance.Show("Game history saved!");
         }
 
         // Update message display timer (only auto-dismiss if it doesn't require OK button)
@@ -825,6 +823,14 @@ public class Game1 : Game
             if (currentPlayer != null)
             {
                 int previousActionValue = currentPlayer.Action.ActionValue;
+                int newActionValue = previousActionValue + 1;
+
+                // Check if action limit would be exceeded
+                if (newActionValue > currentPlayer.Action.MaxAction)
+                {
+                    MessageController.Instance.Show($"Cannot end turn: Max action limit ({currentPlayer.Action.MaxAction}) reached!");
+                    return true;
+                }
 
                 // Record as a single compound action in history
                 HistoryManager.Instance.RecordAction(
@@ -832,8 +838,9 @@ public class Game1 : Game
                 );
 
                 // Execute the action
-                currentPlayer.Action.ActionValue++;
+                currentPlayer.Action.ActionValue = newActionValue;
                 TurnManager.Instance.CurrentPlayer = nextPlayerType;
+                TurnManager.Instance.CurrentTurn = nextPlayerType; // Update whose turn it is
                 TurnManager.Instance.TriggerPlayerChangeEvent();
             }
 
@@ -988,6 +995,10 @@ public class Game1 : Game
 
             // Increment game round - this will trigger OnGameRoundChanged which resets units
             TurnManager.Instance.ChangeCurrentGameRound();
+
+            // Update CurrentTurn to match CurrentPlayer after round ends
+            TurnManager.Instance.CurrentTurn = TurnManager.Instance.CurrentPlayer;
+
             return true;
         }
 
@@ -996,27 +1007,9 @@ public class Game1 : Game
 
     private bool HandleUndoRedoButtonClick(int mouseX, int mouseY)
     {
-        float rightX = GraphicsDevice.Viewport.Width - UNDO_REDO_BUTTON_RIGHT_MARGIN;
-
-        // SAVE button (top)
-        float saveButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
-        float saveButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
-        Rectangle saveButton = new Rectangle(
-            (int)saveButtonX,
-            (int)saveButtonY,
-            (int)UNDO_REDO_BUTTON_WIDTH,
-            (int)UNDO_REDO_BUTTON_HEIGHT);
-
-        if (saveButton.Contains(mouseX, mouseY))
-        {
-            HistoryManager.Instance.AutoSaveHistory();
-            MessageController.Instance.Show("Game history saved!");
-            return true;
-        }
-
-        // UNDO button
-        float undoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
-        float undoButtonY = saveButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        // UNDO button (upper left corner, 1.5 button heights down)
+        float undoButtonX = UNDO_REDO_BUTTON_RIGHT_MARGIN;
+        float undoButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
         Rectangle undoButton = new Rectangle(
             (int)undoButtonX,
             (int)undoButtonY,
@@ -1041,9 +1034,10 @@ public class Game1 : Game
             return true;
         }
 
-        // REDO button
+        // REDO button (upper right corner, 1.5 button heights down)
+        float rightX = GraphicsDevice.Viewport.Width - UNDO_REDO_BUTTON_RIGHT_MARGIN;
         float redoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
-        float redoButtonY = undoButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        float redoButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
         Rectangle redoButton = new Rectangle(
             (int)redoButtonX,
             (int)redoButtonY,
@@ -2369,9 +2363,9 @@ public class Game1 : Game
 
         // Draw Turn label above END TURN button
         float turnLabelY = startY + totalHeight + 20; // Position above END TURN button with more space
-        PlayerType currentTurn = TurnManager.Instance.CurrentPlayer;
+        PlayerType currentTurn = TurnManager.Instance.CurrentTurn;
         string turnText = currentTurn == PlayerType.Rome ? "Rome's Turn" : "Carthage's Turn";
-        Color turnColor = currentTurn == PlayerType.Rome ? new Color(100, 150, 255) : new Color(255, 100, 100);
+        Color turnColor = currentTurn == PlayerType.Rome ? new Color(255, 100, 100) : new Color(100, 150, 255);
 
         if (_font != null)
         {
@@ -2693,36 +2687,9 @@ public class Game1 : Game
 
     private void DrawUndoRedoButtons()
     {
-        // Position buttons in upper right corner
-        float rightX = GraphicsDevice.Viewport.Width - UNDO_REDO_BUTTON_RIGHT_MARGIN;
-
-        // SAVE HISTORY button (top)
-        float saveButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
-        float saveButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
-        Rectangle saveButton = new Rectangle(
-            (int)saveButtonX,
-            (int)saveButtonY,
-            (int)UNDO_REDO_BUTTON_WIDTH,
-            (int)UNDO_REDO_BUTTON_HEIGHT);
-
-        Color saveColor = new Color(100, 180, 100); // Green
-        _spriteBatch.Draw(_pixelTexture, saveButton, saveColor);
-        DrawRectangle(_spriteBatch, _pixelTexture, saveButton, new Color(150, 255, 150), 2f);
-
-        if (_font != null)
-        {
-            string saveText = "SAVE";
-            float scale = 0.35f;
-            Vector2 textSize = _font.MeasureString(saveText) * scale;
-            Vector2 textPosition = new Vector2(
-                saveButton.X + (UNDO_REDO_BUTTON_WIDTH - textSize.X) / 2,
-                saveButton.Y + (UNDO_REDO_BUTTON_HEIGHT - textSize.Y) / 2);
-            _spriteBatch.DrawString(_font, saveText, textPosition, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
-        }
-
-        // UNDO button (below SAVE)
-        float undoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
-        float undoButtonY = saveButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        // UNDO button (upper left corner with left arrow, 1.5 button heights down)
+        float undoButtonX = UNDO_REDO_BUTTON_RIGHT_MARGIN;
+        float undoButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
         Rectangle undoButton = new Rectangle(
             (int)undoButtonX,
             (int)undoButtonY,
@@ -2736,8 +2703,8 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string undoText = $"UNDO ({HistoryManager.Instance.UndoStackCount})";
-            float scale = 0.3f;
+            string undoText = $"< ({HistoryManager.Instance.UndoStackCount})";
+            float scale = 0.4f;
             Vector2 textSize = _font.MeasureString(undoText) * scale;
             Vector2 textPosition = new Vector2(
                 undoButton.X + (UNDO_REDO_BUTTON_WIDTH - textSize.X) / 2,
@@ -2745,9 +2712,10 @@ public class Game1 : Game
             _spriteBatch.DrawString(_font, undoText, textPosition, canUndo ? Color.White : Color.Gray, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
         }
 
-        // REDO button (below UNDO)
+        // REDO button (upper right corner with right arrow, 1.5 button heights down)
+        float rightX = GraphicsDevice.Viewport.Width - UNDO_REDO_BUTTON_RIGHT_MARGIN;
         float redoButtonX = rightX - UNDO_REDO_BUTTON_WIDTH;
-        float redoButtonY = undoButtonY + UNDO_REDO_BUTTON_HEIGHT + UNDO_REDO_BUTTON_SPACING;
+        float redoButtonY = UNDO_REDO_BUTTON_TOP_MARGIN;
         Rectangle redoButton = new Rectangle(
             (int)redoButtonX,
             (int)redoButtonY,
@@ -2761,8 +2729,8 @@ public class Game1 : Game
 
         if (_font != null)
         {
-            string redoText = $"REDO ({HistoryManager.Instance.RedoStackCount})";
-            float scale = 0.3f;
+            string redoText = $"> ({HistoryManager.Instance.RedoStackCount})";
+            float scale = 0.4f;
             Vector2 textSize = _font.MeasureString(redoText) * scale;
             Vector2 textPosition = new Vector2(
                 redoButton.X + (UNDO_REDO_BUTTON_WIDTH - textSize.X) / 2,

@@ -138,6 +138,14 @@ public abstract class Unit : IDisposable
                 switch (TurnManager.Instance.SelectedUnit.State)
                 {
                     case UnitState.Ready:
+                        // Check if activating this unit would exceed max action limit
+                        var player = board.Players.FirstOrDefault(p => p.Type == this.Faction);
+                        if (player != null && player.Action.ActionValue >= player.Action.MaxAction)
+                        {
+                            MessageController.Instance.Show($"Cannot activate unit: Max action limit ({player.Action.MaxAction}) reached!");
+                            break;
+                        }
+
                         foreach (Unit u in board.Units)
                         {
                             if (u.Faction == TurnManager.Instance.CurrentPlayer && u.State == UnitState.Active)
@@ -155,6 +163,15 @@ public abstract class Unit : IDisposable
                         {
                             break;
                         }
+
+                        // Check if activating this unit would exceed max action limit
+                        var idlePlayer = board.Players.FirstOrDefault(p => p.Type == this.Faction);
+                        if (idlePlayer != null && idlePlayer.Action.ActionValue >= idlePlayer.Action.MaxAction)
+                        {
+                            MessageController.Instance.Show($"Cannot activate unit: Max action limit ({idlePlayer.Action.MaxAction}) reached!");
+                            break;
+                        }
+
                         foreach (Unit u in board.Units)
                         {
                             if (u.Faction == TurnManager.Instance.CurrentPlayer && u.State == UnitState.Active)

@@ -36,6 +36,7 @@ public class EndTurnAction : GameAction
 
         // Switch to new player
         TurnManager.Instance.CurrentPlayer = NewPlayer;
+        TurnManager.Instance.CurrentTurn = NewPlayer; // Update whose turn it is
         TurnManager.Instance.TriggerPlayerChangeEvent();
 
         return true;
@@ -45,6 +46,7 @@ public class EndTurnAction : GameAction
     {
         // Switch back to previous player
         TurnManager.Instance.CurrentPlayer = PreviousPlayer;
+        TurnManager.Instance.CurrentTurn = PreviousPlayer; // Restore whose turn it is
         TurnManager.Instance.TriggerPlayerChangeEvent();
 
         // Decrease action back to previous value

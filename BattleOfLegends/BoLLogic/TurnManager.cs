@@ -26,9 +26,10 @@ public sealed class TurnManager
     public static TurnManager Instance => instance.Value;
 
 
-    public Unit SelectedUnit { get; set; } 
+    public Unit SelectedUnit { get; set; }
     public Card SelectedCard { get; set; }
     public PlayerType CurrentPlayer { get; set; }
+    public PlayerType CurrentTurn { get; set; } // Whose turn it is (only changes on END TURN)
     public TurnPhase CurrentTurnPhase { get; set; }
     public GamePhase CurrentGamePhase { get; set; }
     public int CurrentGameRound { get; set; } = 1;

@@ -80,6 +80,7 @@ public class Board
         {
             CurrentPlayer = playerType;
             TurnManager.Instance.CurrentPlayer = CurrentPlayer;
+            TurnManager.Instance.CurrentTurn = CurrentPlayer; // Initialize whose turn it is
         }
         else
         {
