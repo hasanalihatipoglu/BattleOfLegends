@@ -139,8 +139,10 @@ public sealed class CombatManager
         }
 
 
-        PathFinder.Instance.AssignPath(OriginalAttackPath, PathType.Attack);
-   
+        // For counter attacks, use the current AttackPath, for normal attacks use OriginalAttackPath
+        Path pathForRetreat = (type == AttackType.Counter) ? AttackPath : OriginalAttackPath;
+        PathFinder.Instance.AssignPath(pathForRetreat, PathType.Attack);
+
 
         SoundController.Instance.PlaySound("shake_dice");
 
@@ -420,8 +422,8 @@ public sealed class CombatManager
 
         ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Attacker, AttackerState));
 
-        // Only restore target state if not retreating
-        if (Target.State != UnitState.Retreating)
+        // Only restore target state if not retreating or retreated
+        if (Target.State != UnitState.Retreating && Target.State != UnitState.Retreated)
         {
             ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Target, TargetState));
         }

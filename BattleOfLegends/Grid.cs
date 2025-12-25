@@ -187,7 +187,7 @@ public class Grid
         y += row * (hexHeight * 0.75f);
 
         // Generate the point.
-        return new Point((int)x + 2, (int)y + 1);
+        return new Point((int)x, (int)y);
     }
 
     // Helper method to draw a polygon using a line texture

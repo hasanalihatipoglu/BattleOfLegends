@@ -107,6 +107,7 @@ public class Game1 : Game
 
     // Debug display settings
     private bool _showUnitStates = true; // Toggle to show/hide unit states for testing
+    private bool _showGrid = true; // Toggle to show/hide hex grid
 
     // Card resolution tracking
     private Card _resolvingCard = null;
@@ -115,7 +116,7 @@ public class Game1 : Game
     private float _resolvingCardAnimProgress = 0f;
     private const float CARD_ANIM_SPEED = 3.0f; // Animation speed
     private const float RESOLVING_CARD_SCALE = 2.0f; // Scale factor for resolving card
-    private bool _immediateCardWasDismissed = false; // Tracks if FirstStrike or CavalryCounter was just dismissed
+    private bool _immediateCardWasDismissed = false; // Tracks if immediate card (FirstStrike, CavalryCounter, or Skirmish) was just dismissed
 
     public Game1()
     {
@@ -369,6 +370,13 @@ public class Game1 : Game
         {
             _showUnitStates = !_showUnitStates;
             MessageController.Instance.Show($"Unit state display: {(_showUnitStates ? "ON" : "OFF")}");
+        }
+
+        // Toggle grid display with 'G' key
+        if (keyboardState.IsKeyDown(Keys.G) && !_previousKeyboardState.IsKeyDown(Keys.G))
+        {
+            _showGrid = !_showGrid;
+            MessageController.Instance.Show($"Grid display: {(_showGrid ? "ON" : "OFF")}");
         }
 
         // Save history with Ctrl+S
@@ -804,9 +812,9 @@ public class Game1 : Game
             return true;
         }
 
-        // Check END TURN button - position to align with END ROUND button on left side
+        // Check END TURN button
         // Must match DrawPhaseTracker calculation
-        float endTurnButtonY = startY + totalHeight + 45; // Same as END ROUND: 20 (label space) + 25 (button offset)
+        float endTurnButtonY = startY + totalHeight + 45;
         Rectangle endTurnButton = new Rectangle(
             (int)trackerX,
             (int)endTurnButtonY,
@@ -815,33 +823,40 @@ public class Game1 : Game
 
         if (endTurnButton.Contains(mouseX, mouseY))
         {
-            // End current player's turn: increase action by 1 and switch player
-            PlayerType currentPlayerType = TurnManager.Instance.CurrentPlayer;
-            PlayerType nextPlayerType = currentPlayerType == PlayerType.Rome ? PlayerType.Carthage : PlayerType.Rome;
+            // End turn owner's turn: increase action by 1 and switch to next turn owner
+            // Use CurrentTurn (turn owner), NOT CurrentPlayer (active decision maker)
+            PlayerType turnOwnerType = TurnManager.Instance.CurrentTurn;
+            PlayerType nextTurnOwnerType = turnOwnerType == PlayerType.Rome ? PlayerType.Carthage : PlayerType.Rome;
 
-            var currentPlayer = _board.Players.FirstOrDefault(p => p.Type == currentPlayerType);
-            if (currentPlayer != null)
+            var turnOwner = _board.Players.FirstOrDefault(p => p.Type == turnOwnerType);
+            if (turnOwner != null)
             {
-                int previousActionValue = currentPlayer.Action.ActionValue;
+                int previousActionValue = turnOwner.Action.ActionValue;
                 int newActionValue = previousActionValue + 1;
 
                 // Check if action limit would be exceeded
-                if (newActionValue > currentPlayer.Action.MaxAction)
+                if (newActionValue > turnOwner.Action.MaxAction)
                 {
-                    MessageController.Instance.Show($"Cannot end turn: Max action limit ({currentPlayer.Action.MaxAction}) reached!");
+                    MessageController.Instance.Show($"Cannot end turn: Max action limit ({turnOwner.Action.MaxAction}) reached!");
                     return true;
                 }
 
                 // Record as a single compound action in history
                 HistoryManager.Instance.RecordAction(
-                    new EndTurnAction(currentPlayerType, nextPlayerType, previousActionValue)
+                    new EndTurnAction(turnOwnerType, nextTurnOwnerType, previousActionValue)
                 );
 
                 // Execute the action
-                currentPlayer.Action.ActionValue = newActionValue;
-                TurnManager.Instance.CurrentPlayer = nextPlayerType;
-                TurnManager.Instance.CurrentTurn = nextPlayerType; // Update whose turn it is
+                turnOwner.Action.ActionValue = newActionValue;
+                TurnManager.Instance.CurrentPlayer = nextTurnOwnerType;
+                TurnManager.Instance.CurrentTurn = nextTurnOwnerType; // Update whose turn it is
+
+                // Reset turn phase to Move
+                TurnManager.Instance.CurrentTurnPhase = TurnPhase.Move;
+
+                // Trigger events to update UI and cards
                 TurnManager.Instance.TriggerPlayerChangeEvent();
+                TurnManager.Instance.AdvanceTurnPhase(); // Trigger phase change event
             }
 
             return true;
@@ -1131,8 +1146,10 @@ public class Game1 : Game
                 // Handle card leaving Resolving state
                 else if (_resolvingCard == card && card.State != CardState.Resolving)
                 {
-                    // Check if it was an immediate card (FirstStrike or CavalryCounter)
-                    if (_resolvingCard.Type == CardType.FirstStrike || _resolvingCard.Type == CardType.CavalryCounter)
+                    // Check if it was an immediate card (FirstStrike, CavalryCounter, or Skirmish)
+                    if (_resolvingCard.Type == CardType.FirstStrike ||
+                        _resolvingCard.Type == CardType.CavalryCounter ||
+                        _resolvingCard.Type == CardType.Skirmish)
                     {
                         _immediateCardWasDismissed = true;
                     }
@@ -1478,12 +1495,15 @@ public class Game1 : Game
             _spriteBatch.Draw(_backgroundTexture, bgRect, Color.White);
         }
 
-        // Draw hex grid
-        float viewWidth = GraphicsDevice.Viewport.Width / _zoomLevel;
-        float viewHeight = GraphicsDevice.Viewport.Height / _zoomLevel;
-        _grid.DrawHexGrid(_spriteBatch, _pixelTexture, Color.Black,
-            _cameraPosition.X, _cameraPosition.X + viewWidth,
-            _cameraPosition.Y, _cameraPosition.Y + viewHeight);
+        // Draw hex grid (if enabled)
+        if (_showGrid)
+        {
+            float viewWidth = GraphicsDevice.Viewport.Width / _zoomLevel;
+            float viewHeight = GraphicsDevice.Viewport.Height / _zoomLevel;
+            _grid.DrawHexGrid(_spriteBatch, _pixelTexture, Color.LightYellow,
+                _cameraPosition.X, _cameraPosition.X + viewWidth,
+                _cameraPosition.Y, _cameraPosition.Y + viewHeight);
+        }
 
         // Draw tiles
         for (int row = 0; row < BOARD_ROWS; row++)
@@ -1574,23 +1594,25 @@ public class Game1 : Game
         // Draw PathFinder visualizations
         var pathFinder = PathFinder.Instance;
 
-        // Draw CurrentSpaces (valid movement tiles) in green
+        // Draw CurrentSpaces (valid movement tiles) in green with transparency
         foreach (var tile in pathFinder.CurrentSpaces.Keys)
         {
             if (tile?.Position != null)
             {
                 var points = _grid.HexToPoints(tile.Position.Row, tile.Position.Column);
-                DrawPolygon(_spriteBatch, _pixelTexture, points, Color.LightGreen, 2f);
+                DrawFilledPolygon(_spriteBatch, _pixelTexture, points, new Color(0, 255, 0, 5)); // Green fill with transparency
+                DrawPolygon(_spriteBatch, _pixelTexture, points, Color.LightGreen, 2f); // Border for definition
             }
         }
 
-        // Draw CurrentTargets (valid attack targets) in red
+        // Draw CurrentTargets (valid attack targets) in red with transparency
         foreach (var tile in pathFinder.CurrentTargets.Keys)
         {
             if (tile?.Position != null)
             {
                 var points = _grid.HexToPoints(tile.Position.Row, tile.Position.Column);
-                DrawPolygon(_spriteBatch, _pixelTexture, points, Color.Red, 2f);
+                DrawFilledPolygon(_spriteBatch, _pixelTexture, points, new Color(255, 0, 0, 10)); // Red fill with transparency
+                DrawPolygon(_spriteBatch, _pixelTexture, points, Color.Red, 2f); // Border for definition
             }
         }
 
@@ -1710,6 +1732,70 @@ public class Game1 : Game
             Vector2 point1 = points[i];
             Vector2 point2 = points[(i + 1) % points.Length];
             DrawLine(spriteBatch, pixel, point1, point2, color, thickness);
+        }
+    }
+
+    private void DrawFilledPolygon(SpriteBatch spriteBatch, Texture2D pixel, Vector2[] points, Color color)
+    {
+        if (points.Length < 3) return;
+
+        // Calculate center point
+        Vector2 center = Vector2.Zero;
+        foreach (var point in points)
+        {
+            center += point;
+        }
+        center /= points.Length;
+
+        // Draw triangular slices from center to each edge
+        for (int i = 0; i < points.Length; i++)
+        {
+            Vector2 point1 = points[i];
+            Vector2 point2 = points[(i + 1) % points.Length];
+            DrawTriangle(spriteBatch, pixel, center, point1, point2, color);
+        }
+    }
+
+    private void DrawTriangle(SpriteBatch spriteBatch, Texture2D pixel, Vector2 p1, Vector2 p2, Vector2 p3, Color color)
+    {
+        // Sort points by Y coordinate
+        if (p1.Y > p2.Y) { var temp = p1; p1 = p2; p2 = temp; }
+        if (p2.Y > p3.Y) { var temp = p2; p2 = p3; p3 = temp; }
+        if (p1.Y > p2.Y) { var temp = p1; p1 = p2; p2 = temp; }
+
+        // Draw horizontal lines to fill the triangle
+        float y = p1.Y;
+        while (y <= p3.Y)
+        {
+            float xLeft = float.MaxValue;
+            float xRight = float.MinValue;
+
+            // Check intersection with all three edges
+            if (y >= p1.Y && y <= p2.Y && p2.Y != p1.Y)
+            {
+                float x = p1.X + (p2.X - p1.X) * (y - p1.Y) / (p2.Y - p1.Y);
+                xLeft = Math.Min(xLeft, x);
+                xRight = Math.Max(xRight, x);
+            }
+            if (y >= p2.Y && y <= p3.Y && p3.Y != p2.Y)
+            {
+                float x = p2.X + (p3.X - p2.X) * (y - p2.Y) / (p3.Y - p2.Y);
+                xLeft = Math.Min(xLeft, x);
+                xRight = Math.Max(xRight, x);
+            }
+            if (y >= p1.Y && y <= p3.Y && p3.Y != p1.Y)
+            {
+                float x = p1.X + (p3.X - p1.X) * (y - p1.Y) / (p3.Y - p1.Y);
+                xLeft = Math.Min(xLeft, x);
+                xRight = Math.Max(xRight, x);
+            }
+
+            if (xLeft != float.MaxValue && xRight != float.MinValue)
+            {
+                DrawLine(spriteBatch, pixel, new Vector2(xLeft, y), new Vector2(xRight, y), color, 1f);
+            }
+
+            y += 1f;
         }
     }
 

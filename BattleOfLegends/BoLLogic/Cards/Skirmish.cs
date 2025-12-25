@@ -10,7 +10,7 @@ public class Skirmish(PlayerType faction) : Card
 
     public override TurnPhase Timing => TurnPhase.Counter;
 
-    public override UnitClass Target => UnitClass.Cavalry;
+    public override UnitClass Target => UnitClass.Infantry;
 
     public override bool IsDiscard => true;
 

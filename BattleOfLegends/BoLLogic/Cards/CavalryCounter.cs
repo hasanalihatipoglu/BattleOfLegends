@@ -18,10 +18,11 @@ public class CavalryCounter(PlayerType faction) : Card
 
     public override bool IsValid()
     {
-
+        // In Counter phase, the defender becomes the attacker
+        Unit attacker = CombatManager.Instance.Attacker;
         Unit target = CombatManager.Instance.Target;
 
-        if (target == null)
+        if (attacker == null || target == null)
         {
             MessageController.Instance.Show("No Target!");
             return false;
@@ -35,7 +36,8 @@ public class CavalryCounter(PlayerType faction) : Card
         }
 
 
-        if (target.Abilities.Contains(Type) == false)
+        // Check if the counterattacker (original defender) has the ability
+        if (attacker.Abilities.Contains(Type) == false)
         {
             MessageController.Instance.Show("No Counter Ability!");
             return false;
