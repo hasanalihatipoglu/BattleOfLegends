@@ -19,6 +19,12 @@ public class Advance(PlayerType faction) : Card
 
     public override bool IsValid()
     {
+        if (CombatManager.Instance.OriginalAttackPath?.TilesInPath == null ||
+            CombatManager.Instance.OriginalAttackPath.TilesInPath.Count == 0)
+        {
+            MessageController.Instance.Show("Invalid attack path!");
+            return false;
+        }
 
         Unit attacker = CombatManager.Instance.OriginalAttackPath.TilesInPath.First().Unit;
 
@@ -35,6 +41,13 @@ public class Advance(PlayerType faction) : Card
         if (CombatManager.Instance.CurrentCombatType != CombatType.Melee)
         {
             MessageController.Instance.Show("No Advance with Ranged!");
+            return false;
+        }
+
+        if (CombatManager.Instance.AttackPath?.TilesInPath == null ||
+            CombatManager.Instance.AttackPath.TilesInPath.Count == 0)
+        {
+            MessageController.Instance.Show("Invalid target path!");
             return false;
         }
 
@@ -67,7 +80,16 @@ public class Advance(PlayerType faction) : Card
         if (IsValid() == false)
             return false;
 
+        if (CombatManager.Instance.OriginalAttackPath?.TilesInPath == null ||
+            CombatManager.Instance.OriginalAttackPath.TilesInPath.Count == 0)
+        {
+            return false;
+        }
+
         Unit attacker = CombatManager.Instance.OriginalAttackPath.TilesInPath.First().Unit;
+
+        if (attacker == null)
+            return false;
 
         PathFinder.Instance.FindPaths(attacker, attacker.Tile, PathType.Advance);
 

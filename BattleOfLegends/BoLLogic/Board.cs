@@ -22,8 +22,9 @@ public class Board
     public List<Unit> Units { get; set; } = [];
     public List<Tile> Tiles { get; set; } = [];
     public List<Card> Cards { get; set; } = [];
-    public List<Player> Players { get; set; } = []; 
+    public List<Player> Players { get; set; } = [];
     public PlayerType CurrentPlayer { get; set; }
+    public PlayerType InitialPlayer { get; set; } // The player who starts rounds 1 & 2 (never changes)
     public GamePhase GamePhase { get; set; }
     public TurnPhase TurnPhase { get; set; }
     public int EndRound { get; set; }
@@ -79,6 +80,7 @@ public class Board
         if (Enum.TryParse(GameManager.Instance.CurrentPlayer, out PlayerType playerType))
         {
             CurrentPlayer = playerType;
+            InitialPlayer = playerType; // Store the scenario's initial player (never changes)
             TurnManager.Instance.CurrentPlayer = CurrentPlayer;
             TurnManager.Instance.CurrentTurn = CurrentPlayer; // Initialize whose turn it is
         }

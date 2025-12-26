@@ -183,11 +183,11 @@ public sealed class GameManager
 
         if (CurrentGameRound % 4 == 1 || CurrentGameRound % 4 == 2)
         {
-            TurnManager.Instance.CurrentPlayer = CurrentBoard.CurrentPlayer;
+            TurnManager.Instance.CurrentPlayer = CurrentBoard.InitialPlayer;
         }
         else
         {
-            TurnManager.Instance.CurrentPlayer = CurrentBoard.CurrentPlayer.Opponent();
+            TurnManager.Instance.CurrentPlayer = CurrentBoard.InitialPlayer.Opponent();
         }
 
         foreach (Player player in CurrentBoard.Players)

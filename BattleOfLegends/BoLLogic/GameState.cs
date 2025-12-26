@@ -85,12 +85,12 @@ public class GameState(Board board)
 
         if (CurrentGameRound % 4 == 1 || CurrentGameRound % 4 == 2)
         {
-            TurnManager.Instance.CurrentPlayer = Board.CurrentPlayer;
+            TurnManager.Instance.CurrentPlayer = Board.InitialPlayer;
             CurrentPlayer = TurnManager.Instance.CurrentPlayer;
         }
         else
         {
-            TurnManager.Instance.CurrentPlayer = Board.CurrentPlayer.Opponent();
+            TurnManager.Instance.CurrentPlayer = Board.InitialPlayer.Opponent();
             CurrentPlayer = TurnManager.Instance.CurrentPlayer;
         }
 

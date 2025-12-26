@@ -1002,8 +1002,14 @@ public class Game1 : Game
         if (endRoundButton.Contains(mouseX, mouseY))
         {
             // Reset both players' action values to 0
-            var romePlayer = _board.Players.First(p => p.Type == PlayerType.Rome);
-            var carthagePlayer = _board.Players.First(p => p.Type == PlayerType.Carthage);
+            var romePlayer = _board.Players.FirstOrDefault(p => p.Type == PlayerType.Rome);
+            var carthagePlayer = _board.Players.FirstOrDefault(p => p.Type == PlayerType.Carthage);
+
+            if (romePlayer == null || carthagePlayer == null)
+            {
+                System.Diagnostics.Debug.WriteLine("ERROR: Players not found!");
+                return false;
+            }
 
             TurnManager.Instance.ChangeCurrentPlayerAction(PlayerType.Rome, -romePlayer.Action.ActionValue);
             TurnManager.Instance.ChangeCurrentPlayerAction(PlayerType.Carthage, -carthagePlayer.Action.ActionValue);
@@ -1182,6 +1188,19 @@ public class Game1 : Game
         // Mark card cache as dirty when player changes
         _cardCacheDirty = true;
         System.Diagnostics.Debug.WriteLine($"Player changed to: {TurnManager.Instance.CurrentPlayer}");
+
+        // Reset Retreated units to Idle when their faction's turn starts
+        if (_board?.Units != null)
+        {
+            foreach (var unit in _board.Units)
+            {
+                if (unit.Faction == TurnManager.Instance.CurrentPlayer && unit.State == UnitState.Retreated)
+                {
+                    unit.State = UnitState.Idle;
+                    System.Diagnostics.Debug.WriteLine($"{unit} reset from Retreated to Idle at start of {TurnManager.Instance.CurrentPlayer}'s turn");
+                }
+            }
+        }
     }
 
     private void OnGamePhaseChanged(object sender, EventArgs e)
@@ -1492,7 +1511,8 @@ public class Game1 : Game
                 (int)(_cameraPosition.Y - 250),
                 (int)bgWidth,
                 (int)bgHeight);
-            _spriteBatch.Draw(_backgroundTexture, bgRect, Color.White);
+            // Darken the background to reduce brightness (50% brightness)
+            _spriteBatch.Draw(_backgroundTexture, bgRect, new Color(220, 220, 220));
         }
 
         // Draw hex grid (if enabled)
@@ -1500,7 +1520,7 @@ public class Game1 : Game
         {
             float viewWidth = GraphicsDevice.Viewport.Width / _zoomLevel;
             float viewHeight = GraphicsDevice.Viewport.Height / _zoomLevel;
-            _grid.DrawHexGrid(_spriteBatch, _pixelTexture, Color.LightYellow,
+            _grid.DrawHexGrid(_spriteBatch, _pixelTexture, Color.LightGray,
                 _cameraPosition.X, _cameraPosition.X + viewWidth,
                 _cameraPosition.Y, _cameraPosition.Y + viewHeight);
         }
@@ -1600,7 +1620,7 @@ public class Game1 : Game
             if (tile?.Position != null)
             {
                 var points = _grid.HexToPoints(tile.Position.Row, tile.Position.Column);
-                DrawFilledPolygon(_spriteBatch, _pixelTexture, points, new Color(0, 255, 0, 5)); // Green fill with transparency
+                DrawFilledPolygon(_spriteBatch, _pixelTexture, points, new Color(0, 255, 0, 50)); // Green fill with transparency
                 DrawPolygon(_spriteBatch, _pixelTexture, points, Color.LightGreen, 2f); // Border for definition
             }
         }
@@ -1611,7 +1631,7 @@ public class Game1 : Game
             if (tile?.Position != null)
             {
                 var points = _grid.HexToPoints(tile.Position.Row, tile.Position.Column);
-                DrawFilledPolygon(_spriteBatch, _pixelTexture, points, new Color(255, 0, 0, 10)); // Red fill with transparency
+                DrawFilledPolygon(_spriteBatch, _pixelTexture, points, new Color(255, 0, 0, 50)); // Red fill with transparency
                 DrawPolygon(_spriteBatch, _pixelTexture, points, Color.Red, 2f); // Border for definition
             }
         }

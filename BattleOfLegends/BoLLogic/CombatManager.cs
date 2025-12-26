@@ -91,7 +91,8 @@ public sealed class CombatManager
 
 
 
-        if (Attacker.Tile.Adjacents.Contains(Target.Tile))
+        if (Attacker?.Tile?.Adjacents != null && Target?.Tile != null &&
+            Attacker.Tile.Adjacents.Contains(Target.Tile))
         {
             CurrentCombatType = CombatType.Melee;
         }

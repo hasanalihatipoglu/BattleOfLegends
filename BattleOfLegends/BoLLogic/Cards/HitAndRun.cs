@@ -19,6 +19,12 @@ public class HitAndRun(PlayerType faction) : Card
 
     public override bool IsValid()
     {
+        if (CombatManager.Instance.OriginalAttackPath?.TilesInPath == null ||
+            CombatManager.Instance.OriginalAttackPath.TilesInPath.Count == 0)
+        {
+            MessageController.Instance.Show("Invalid attack path!");
+            return false;
+        }
 
         Unit attacker = CombatManager.Instance.OriginalAttackPath.TilesInPath.First().Unit;
 
@@ -58,7 +64,16 @@ public class HitAndRun(PlayerType faction) : Card
         if (IsValid() == false)
             return false;
 
+        if (CombatManager.Instance.OriginalAttackPath?.TilesInPath == null ||
+            CombatManager.Instance.OriginalAttackPath.TilesInPath.Count == 0)
+        {
+            return false;
+        }
+
         Unit attacker = CombatManager.Instance.OriginalAttackPath.TilesInPath.First().Unit;
+
+        if (attacker == null)
+            return false;
 
         PathFinder.Instance.FindPaths(attacker, attacker.Tile, PathType.HitAndRun);
 

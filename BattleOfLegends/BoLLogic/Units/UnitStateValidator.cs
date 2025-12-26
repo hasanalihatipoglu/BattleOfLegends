@@ -49,6 +49,7 @@ public static class UnitStateValidator
             // From Attacked
             (UnitState.Attacked, UnitState.Passive) => true,
             (UnitState.Attacked, UnitState.Advancing) => true,
+            (UnitState.Attacked, UnitState.Retreating) => true,
 
             // From Attacking
             (UnitState.Attacking, UnitState.Attacked) => true,
