@@ -239,4 +239,33 @@ public sealed class HistoryManager
 
         return _redoStack.Peek().GetNotation();
     }
+
+    /// <summary>
+    /// Get the most recent save file path
+    /// </summary>
+    public string GetMostRecentSaveFile()
+    {
+        string directory = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "BattleOfLegends"
+        );
+
+        if (!System.IO.Directory.Exists(directory))
+            return null;
+
+        var files = System.IO.Directory.GetFiles(directory, "game_history_*.txt");
+        if (files.Length == 0)
+            return null;
+
+        // Sort by file name (which contains timestamp) and get the most recent
+        return files.OrderByDescending(f => f).FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Get a copy of the complete history for replay purposes
+    /// </summary>
+    public List<GameAction> GetCompleteHistory()
+    {
+        return new List<GameAction>(_completeHistory);
+    }
 }

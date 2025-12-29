@@ -387,6 +387,13 @@ public class Game1 : Game
             MessageController.Instance.Show("Game history saved!");
         }
 
+        // Load game with Ctrl+L
+        if (keyboardState.IsKeyDown(Keys.LeftControl) && keyboardState.IsKeyDown(Keys.L) &&
+            !(_previousKeyboardState.IsKeyDown(Keys.LeftControl) && _previousKeyboardState.IsKeyDown(Keys.L)))
+        {
+            LoadGameFromHistory();
+        }
+
         // Update message display timer (only auto-dismiss if it doesn't require OK button)
         if (_currentMessage != null && !_currentMessageRequiresOk)
         {
@@ -3014,6 +3021,75 @@ public class Game1 : Game
             '.' => new bool[,] { {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,true,false,false}, {false,false,true,false,false} },
             _ => new bool[,] { {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false}, {false,false,false,false,false} }
         };
+    }
+
+    private void LoadGameFromHistory()
+    {
+        try
+        {
+            // Find the most recent save file
+            string saveFilePath = HistoryManager.Instance.GetMostRecentSaveFile();
+
+            if (saveFilePath == null || !File.Exists(saveFilePath))
+            {
+                MessageController.Instance.Show("No save file found!");
+                return;
+            }
+
+            // Get the current history before reloading
+            var historyToReplay = HistoryManager.Instance.GetCompleteHistory();
+
+            if (historyToReplay.Count == 0)
+            {
+                MessageController.Instance.Show("No actions to load!");
+                return;
+            }
+
+            MessageController.Instance.Show($"Loading {historyToReplay.Count} actions from save...");
+
+            // Reload the scenario from scratch
+            string scenarioPath = System.IO.Path.Combine(Content.RootDirectory, "ticinus.json");
+            GameManager.Instance.LoadGame(scenarioPath);
+
+            // Reinitialize the board
+            _board = new Board();
+            _board.Initialize();
+            GameManager.Instance.CurrentBoard = _board;
+            PathFinder.Instance.CurrentBoard = _board;
+
+            // Clear the history manager to start fresh
+            HistoryManager.Instance.Clear();
+            HistoryManager.Instance.Initialize(_board);
+
+            // Resubscribe events for new units
+            foreach (var unit in _board.Units)
+            {
+                unit.Health.ChangeUnitState += unit.On_StateChanged;
+                CombatManager.Instance.ChangeUnitState += unit.On_StateChanged;
+            }
+
+            // Replay all actions
+            int successCount = 0;
+            foreach (var action in historyToReplay)
+            {
+                if (action.Execute(_board))
+                {
+                    HistoryManager.Instance.RecordAction(action);
+                    successCount++;
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Load] Failed to replay action: {action.GetNotation()}");
+                }
+            }
+
+            MessageController.Instance.Show($"Game loaded! Replayed {successCount}/{historyToReplay.Count} actions.");
+        }
+        catch (Exception ex)
+        {
+            MessageController.Instance.Show($"Error loading game: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Load] Error: {ex}");
+        }
     }
 
     protected override void Dispose(bool disposing)
