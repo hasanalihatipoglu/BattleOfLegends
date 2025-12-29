@@ -23,7 +23,10 @@
       "Bash(git push)",
       "Bash(where /r . *.csproj)",
       "Bash(grep:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(ls:*)",
+      "Bash(for file in CombatAction.cs PlayerChangeAction.cs MoraleChangeAction.cs ActionValueChangeAction.cs PhaseChangeAction.cs)",
+      "Bash(do echo \"Processing $file...\")"
     ],
     "deny": [],
     "ask": []

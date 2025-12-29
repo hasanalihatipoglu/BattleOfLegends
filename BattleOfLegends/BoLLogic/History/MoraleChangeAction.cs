@@ -17,6 +17,9 @@ public class MoraleChangeAction : GameAction
         NewValue = previousValue + delta;
     }
 
+    // Parameterless constructor for JSON deserialization
+    public MoraleChangeAction() : base() { }
+
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";

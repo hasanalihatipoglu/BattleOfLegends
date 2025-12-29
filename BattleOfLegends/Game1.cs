@@ -3027,25 +3027,31 @@ public class Game1 : Game
     {
         try
         {
-            // Find the most recent save file
-            string saveFilePath = HistoryManager.Instance.GetMostRecentSaveFile();
+            // Find the most recent JSON save file
+            string jsonSaveFile = HistoryManager.Instance.GetMostRecentJsonSaveFile();
 
-            if (saveFilePath == null || !File.Exists(saveFilePath))
+            if (jsonSaveFile == null || !File.Exists(jsonSaveFile))
             {
-                MessageController.Instance.Show("No save file found!");
+                MessageController.Instance.Show("No save file found! Press Ctrl+S to save first.");
+                System.Diagnostics.Debug.WriteLine("[Load] No JSON save file found");
                 return;
             }
 
-            // Get the current history before reloading
-            var historyToReplay = HistoryManager.Instance.GetCompleteHistory();
+            System.Diagnostics.Debug.WriteLine($"[Load] Loading from JSON: {jsonSaveFile}");
+            MessageController.Instance.Show($"Loading: {System.IO.Path.GetFileName(jsonSaveFile)}");
 
-            if (historyToReplay.Count == 0)
+            // Load actions from the JSON file
+            var historyToReplay = HistoryManager.Instance.LoadHistoryFromJson(jsonSaveFile);
+
+            if (historyToReplay == null || historyToReplay.Count == 0)
             {
-                MessageController.Instance.Show("No actions to load!");
+                MessageController.Instance.Show("Failed to load save file or file is empty!");
+                System.Diagnostics.Debug.WriteLine("[Load] Failed to load or empty history");
                 return;
             }
 
-            MessageController.Instance.Show($"Loading {historyToReplay.Count} actions from save...");
+            System.Diagnostics.Debug.WriteLine($"[Load] Loaded {historyToReplay.Count} actions from JSON");
+            MessageController.Instance.Show($"Reloading scenario and replaying {historyToReplay.Count} actions...");
 
             // Reload the scenario from scratch
             string scenarioPath = System.IO.Path.Combine(Content.RootDirectory, "ticinus.json");

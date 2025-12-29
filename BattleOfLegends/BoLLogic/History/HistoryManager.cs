@@ -1,5 +1,7 @@
 using System.Text;
 using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BoLLogic;
 
@@ -187,24 +189,100 @@ public sealed class HistoryManager
     }
 
     /// <summary>
-    /// Auto-save history to the default location
+    /// Auto-save history to the default location (both text and JSON formats)
     /// </summary>
     public void AutoSaveHistory()
     {
-        string defaultPath = System.IO.Path.Combine(
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string directory = System.IO.Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-            "BattleOfLegends",
-            $"game_history_{DateTime.Now:yyyyMMdd_HHmmss}.txt"
+            "BattleOfLegends"
         );
 
         // Ensure directory exists
-        string directory = System.IO.Path.GetDirectoryName(defaultPath);
         if (!System.IO.Directory.Exists(directory))
         {
             System.IO.Directory.CreateDirectory(directory);
         }
 
-        SaveHistoryToFile(defaultPath);
+        // Save human-readable text version
+        string textPath = System.IO.Path.Combine(directory, $"game_history_{timestamp}.txt");
+        SaveHistoryToFile(textPath);
+
+        // Save machine-readable JSON version
+        string jsonPath = System.IO.Path.Combine(directory, $"game_save_{timestamp}.json");
+        SaveHistoryToJson(jsonPath);
+    }
+
+    /// <summary>
+    /// Save history as JSON for loading across sessions
+    /// </summary>
+    private void SaveHistoryToJson(string filePath)
+    {
+        try
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = true
+            };
+
+            string json = JsonSerializer.Serialize(_completeHistory, options);
+            File.WriteAllText(filePath, json);
+            System.Diagnostics.Debug.WriteLine($"[History] Saved JSON to: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[History] Error saving JSON: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Load history from JSON file
+    /// </summary>
+    public List<GameAction> LoadHistoryFromJson(string filePath)
+    {
+        try
+        {
+            if (!File.Exists(filePath))
+                return null;
+
+            string json = File.ReadAllText(filePath);
+            var options = new JsonSerializerOptions
+            {
+                IncludeFields = true
+            };
+
+            var actions = JsonSerializer.Deserialize<List<GameAction>>(json, options);
+            System.Diagnostics.Debug.WriteLine($"[History] Loaded {actions?.Count ?? 0} actions from JSON");
+            return actions;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[History] Error loading JSON: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Get the most recent JSON save file
+    /// </summary>
+    public string GetMostRecentJsonSaveFile()
+    {
+        string directory = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "BattleOfLegends"
+        );
+
+        if (!System.IO.Directory.Exists(directory))
+            return null;
+
+        var files = System.IO.Directory.GetFiles(directory, "game_save_*.json");
+        if (files.Length == 0)
+            return null;
+
+        // Sort by file name (which contains timestamp) and get the most recent
+        return files.OrderByDescending(f => f).FirstOrDefault();
     }
 
     /// <summary>

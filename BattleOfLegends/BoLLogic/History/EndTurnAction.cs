@@ -21,6 +21,9 @@ public class EndTurnAction : GameAction
         PreviousPhase = TurnManager.Instance.CurrentTurnPhase; // Store current phase for undo
     }
 
+    // Parameterless constructor for JSON deserialization
+    public EndTurnAction() : base() { }
+
     public override string GetNotation()
     {
         string playerName = PreviousPlayer == PlayerType.Rome ? "Rome" : "Carthage";

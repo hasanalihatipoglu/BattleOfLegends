@@ -15,6 +15,9 @@ public class PhaseChangeAction : GameAction
         NewPhase = newPhase;
     }
 
+    // Parameterless constructor for JSON deserialization
+    public PhaseChangeAction() : base() { }
+
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";

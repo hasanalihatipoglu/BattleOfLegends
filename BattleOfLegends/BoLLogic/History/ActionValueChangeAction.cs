@@ -17,6 +17,9 @@ public class ActionValueChangeAction : GameAction
         NewValue = previousValue + delta;
     }
 
+    // Parameterless constructor for JSON deserialization
+    public ActionValueChangeAction() : base() { }
+
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";

@@ -39,6 +39,9 @@ public class CombatAction : GameAction
         DefenderStateBefore = defender.State;
     }
 
+    // Parameterless constructor for JSON deserialization
+    public CombatAction() : base() { }
+
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";

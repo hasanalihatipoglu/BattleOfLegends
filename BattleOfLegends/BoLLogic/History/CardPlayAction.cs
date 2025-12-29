@@ -23,6 +23,9 @@ public class CardPlayAction : GameAction
         HandValueAfter = handValueAfter;
     }
 
+    // Parameterless constructor for JSON deserialization
+    public CardPlayAction() : base() { }
+
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";

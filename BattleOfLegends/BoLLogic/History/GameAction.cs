@@ -1,9 +1,19 @@
+using System.Text.Json.Serialization;
+
 namespace BoLLogic;
 
 /// <summary>
 /// Base class for all reversible game actions in the history system.
 /// Each action knows how to execute itself and undo itself.
 /// </summary>
+[JsonDerivedType(typeof(UnitMoveAction), typeDiscriminator: "UnitMove")]
+[JsonDerivedType(typeof(CombatAction), typeDiscriminator: "Combat")]
+[JsonDerivedType(typeof(EndTurnAction), typeDiscriminator: "EndTurn")]
+[JsonDerivedType(typeof(CardPlayAction), typeDiscriminator: "CardPlay")]
+[JsonDerivedType(typeof(PlayerChangeAction), typeDiscriminator: "PlayerChange")]
+[JsonDerivedType(typeof(MoraleChangeAction), typeDiscriminator: "MoraleChange")]
+[JsonDerivedType(typeof(ActionValueChangeAction), typeDiscriminator: "ActionValueChange")]
+[JsonDerivedType(typeof(PhaseChangeAction), typeDiscriminator: "PhaseChange")]
 public abstract class GameAction
 {
     /// <summary>
@@ -35,6 +45,12 @@ public abstract class GameAction
     protected GameAction(PlayerType player)
     {
         Player = player;
+        Timestamp = DateTime.Now;
+    }
+
+    // Parameterless constructor for JSON deserialization
+    protected GameAction()
+    {
         Timestamp = DateTime.Now;
     }
 }

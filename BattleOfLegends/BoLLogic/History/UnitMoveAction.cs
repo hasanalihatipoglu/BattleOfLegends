@@ -25,6 +25,9 @@ public class UnitMoveAction : GameAction
         NewHealth = unit.Health.GetHealth(); // Will be updated after move if health changes
     }
 
+    // Parameterless constructor for JSON deserialization
+    public UnitMoveAction() : base() { }
+
     /// <summary>
     /// Update the new health value after the move is complete
     /// </summary>
