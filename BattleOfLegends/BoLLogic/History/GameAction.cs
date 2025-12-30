@@ -14,6 +14,8 @@ namespace BoLLogic;
 [JsonDerivedType(typeof(MoraleChangeAction), typeDiscriminator: "MoraleChange")]
 [JsonDerivedType(typeof(ActionValueChangeAction), typeDiscriminator: "ActionValueChange")]
 [JsonDerivedType(typeof(PhaseChangeAction), typeDiscriminator: "PhaseChange")]
+[JsonDerivedType(typeof(GamePhaseChangeAction), typeDiscriminator: "GamePhaseChange")]
+[JsonDerivedType(typeof(GameRoundChangeAction), typeDiscriminator: "GameRoundChange")]
 public abstract class GameAction
 {
     /// <summary>

@@ -46,6 +46,8 @@ public sealed class TurnManager
 
     public void AdvanceTurnPhase(int i)
     {
+        TurnPhase previousPhase = CurrentTurnPhase;
+
         int currentPhaseValue = (int)CurrentTurnPhase;
         int totalPhases = System.Enum.GetValues(typeof(TurnPhase)).Length;
 
@@ -59,6 +61,11 @@ public sealed class TurnManager
         }
 
         CurrentTurnPhase = (TurnPhase)currentPhaseValue;
+
+        // Record phase change in history
+        HistoryManager.Instance.RecordAction(
+            new PhaseChangeAction(CurrentPlayer, previousPhase, CurrentTurnPhase)
+        );
 
         switch (CurrentTurnPhase)
         {
@@ -156,7 +163,14 @@ public sealed class TurnManager
 
     public void ChangeCurrentGameRound()
     {
+        int previousRound = CurrentGameRound;
         CurrentGameRound++;
+
+        // Record round change in history
+        HistoryManager.Instance.RecordAction(
+            new GameRoundChangeAction(CurrentPlayer, previousRound, CurrentGameRound)
+        );
+
         ChangeGameRound?.Invoke(this, EventArgs.Empty);
     }
 

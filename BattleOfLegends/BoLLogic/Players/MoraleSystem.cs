@@ -34,7 +34,14 @@ public class MoraleSystem()
     {
         string winner = Faction == PlayerType.Rome ? "Carthage" : "Rome";
         MessageController.Instance.ShowWithOkButton($"GAME OVER ! {winner} wins!");
+
+        GamePhase previousPhase = TurnManager.Instance.CurrentGamePhase;
         TurnManager.Instance.CurrentGamePhase = GamePhase.End;
+
+        // Record game phase change in history
+        HistoryManager.Instance.RecordAction(
+            new GamePhaseChangeAction(Faction, previousPhase, GamePhase.End)
+        );
     }
 
 }

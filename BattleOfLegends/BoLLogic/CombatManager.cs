@@ -84,7 +84,13 @@ public sealed class CombatManager
         if (TurnManager.Instance.CurrentTurnPhase == TurnPhase.Move
             || TurnManager.Instance.CurrentTurnPhase == TurnPhase.Advance)
         {
+            TurnPhase previousPhase = TurnManager.Instance.CurrentTurnPhase;
             TurnManager.Instance.CurrentTurnPhase = TurnPhase.Attack;
+
+            // Record phase change in history
+            HistoryManager.Instance.RecordAction(
+                new PhaseChangeAction(TurnManager.Instance.CurrentPlayer, previousPhase, TurnPhase.Attack)
+            );
 
             TurnManager.Instance.AdvanceTurnPhase();
         }

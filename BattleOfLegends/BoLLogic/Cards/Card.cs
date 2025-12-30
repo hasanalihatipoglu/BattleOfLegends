@@ -160,7 +160,7 @@ public abstract class Card : IDisposable
             System.Diagnostics.Debug.WriteLine($"[ChangeCardState] Recording: {this.Faction} {this.Type}, Hand {handValueBefore} -> {handValueAfter} (delta={handDelta}), State {oldState} -> {state}");
 
             HistoryManager.Instance.RecordAction(
-                new CardPlayAction(this.Faction, this, oldState, state, handValueBefore, handValueAfter)
+                new CardPlayAction(this.Faction, this, oldState, state, handValueBefore, handValueAfter, GameManager.Instance.CurrentBoard)
             );
         }
 

@@ -8,17 +8,21 @@ public class CardPlayAction : GameAction
     public CardType CardType { get; set; }
     public CardState PreviousState { get; set; }
     public CardState NewState { get; set; }
-    public int CardId { get; set; } // To uniquely identify which card if player has multiple of same type
+    public int CardIndex { get; set; } // Index of this card among all cards of same type/faction
     public int HandValueBefore { get; set; }
     public int HandValueAfter { get; set; }
 
-    public CardPlayAction(PlayerType player, Card card, CardState previousState, CardState newState, int handValueBefore, int handValueAfter)
+    public CardPlayAction(PlayerType player, Card card, CardState previousState, CardState newState, int handValueBefore, int handValueAfter, Board board)
         : base(player)
     {
         CardType = card.Type;
         PreviousState = previousState;
         NewState = newState;
-        CardId = card.GetHashCode(); // Simple way to track specific card instance
+
+        // Find the index of this card among all cards of the same type and faction
+        var matchingCards = board.Cards.Where(c => c.Faction == player && c.Type == card.Type).ToList();
+        CardIndex = matchingCards.IndexOf(card);
+
         HandValueBefore = handValueBefore;
         HandValueAfter = handValueAfter;
     }
@@ -41,10 +45,12 @@ public class CardPlayAction : GameAction
 
     public override bool Execute(Board board)
     {
-        // Find the specific card
-        var card = board.Cards.FirstOrDefault(c => c.Faction == Player && c.Type == CardType && c.GetHashCode() == CardId);
-        if (card == null)
+        // Find the specific card by index among matching cards
+        var matchingCards = board.Cards.Where(c => c.Faction == Player && c.Type == CardType).ToList();
+        if (CardIndex < 0 || CardIndex >= matchingCards.Count)
             return false;
+
+        var card = matchingCards[CardIndex];
 
         // Find the player
         var player = board.Players.FirstOrDefault(p => p.Type == Player);
@@ -70,13 +76,15 @@ public class CardPlayAction : GameAction
 
     public override bool Undo(Board board)
     {
-        // Find the specific card
-        var card = board.Cards.FirstOrDefault(c => c.Faction == Player && c.Type == CardType && c.GetHashCode() == CardId);
-        if (card == null)
+        // Find the specific card by index among matching cards
+        var matchingCards = board.Cards.Where(c => c.Faction == Player && c.Type == CardType).ToList();
+        if (CardIndex < 0 || CardIndex >= matchingCards.Count)
         {
-            System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] FAILED: Card not found - {Player} {CardType}");
+            System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] FAILED: Card not found - {Player} {CardType} index {CardIndex}");
             return false;
         }
+
+        var card = matchingCards[CardIndex];
 
         // Find the player
         var player = board.Players.FirstOrDefault(p => p.Type == Player);

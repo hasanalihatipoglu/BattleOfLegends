@@ -34,8 +34,14 @@ public class MixedOrder(PlayerType faction) : Card
 
         if(OrderManager.Instance.GiveOrder(Faction, OrderType.MixedOrder))
         {
+            GamePhase previousPhase = TurnManager.Instance.CurrentGamePhase;
             TurnManager.Instance.CurrentGamePhase = GamePhase.Order;
             TurnManager.Instance.ChangeCurrentGamePhase();
+
+            // Record game phase change in history
+            HistoryManager.Instance.RecordAction(
+                new GamePhaseChangeAction(Faction, previousPhase, GamePhase.Order)
+            );
 
             MessageController.Instance.Show("Select 3 Units!");
             OrderManager.Instance.OrderLimit = 3;
