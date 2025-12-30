@@ -5,9 +5,9 @@ namespace BoLLogic;
 /// </summary>
 public class ActionValueChangeAction : GameAction
 {
-    public int PreviousValue { get; private set; }
-    public int NewValue { get; private set; }
-    public int Delta { get; private set; }
+    public int PreviousValue { get; set; }
+    public int NewValue { get; set; }
+    public int Delta { get; set; }
 
     public ActionValueChangeAction(PlayerType player, int previousValue, int delta)
         : base(player)

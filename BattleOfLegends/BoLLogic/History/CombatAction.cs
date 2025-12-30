@@ -5,16 +5,16 @@ namespace BoLLogic;
 /// </summary>
 public class CombatAction : GameAction
 {
-    public UnitType AttackerType { get; private set; }
-    public Position AttackerPosition { get; private set; }
-    public UnitType DefenderType { get; private set; }
-    public Position DefenderPosition { get; private set; }
-    public int AttackerHealthBefore { get; private set; }
-    public int DefenderHealthBefore { get; private set; }
-    public int AttackerHealthAfter { get; private set; }
-    public int DefenderHealthAfter { get; private set; }
-    public UnitState AttackerStateBefore { get; private set; }
-    public UnitState DefenderStateBefore { get; private set; }
+    public UnitType AttackerType { get; set; }
+    public Position AttackerPosition { get; set; }
+    public UnitType DefenderType { get; set; }
+    public Position DefenderPosition { get; set; }
+    public int AttackerHealthBefore { get; set; }
+    public int DefenderHealthBefore { get; set; }
+    public int AttackerHealthAfter { get; set; }
+    public int DefenderHealthAfter { get; set; }
+    public UnitState AttackerStateBefore { get; set; }
+    public UnitState DefenderStateBefore { get; set; }
 
     // Keep references to the actual units for resurrection
     private readonly Unit _attacker;

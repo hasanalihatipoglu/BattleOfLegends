@@ -5,11 +5,11 @@ namespace BoLLogic;
 /// </summary>
 public class EndTurnAction : GameAction
 {
-    public PlayerType PreviousPlayer { get; private set; }
-    public PlayerType NewPlayer { get; private set; }
-    public int PreviousActionValue { get; private set; }
-    public int NewActionValue { get; private set; }
-    public TurnPhase PreviousPhase { get; private set; }
+    public PlayerType PreviousPlayer { get; set; }
+    public PlayerType NewPlayer { get; set; }
+    public int PreviousActionValue { get; set; }
+    public int NewActionValue { get; set; }
+    public TurnPhase PreviousPhase { get; set; }
 
     public EndTurnAction(PlayerType previousPlayer, PlayerType newPlayer, int previousActionValue)
         : base(previousPlayer) // The player ending their turn

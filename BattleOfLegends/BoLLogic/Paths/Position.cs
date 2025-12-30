@@ -1,11 +1,17 @@
-﻿namespace BoLLogic;
+﻿using System.Text.Json.Serialization;
 
-public readonly struct Position(int row, int column)
-{ 
-    public int Row { get; } = row;
-    public int Column { get; } = column;
+namespace BoLLogic;
 
+public struct Position
+{
+    public int Row { get; set; }
+    public int Column { get; set; }
 
+    public Position(int row, int column)
+    {
+        Row = row;
+        Column = column;
+    }
 
     public override bool Equals(object obj)
     {

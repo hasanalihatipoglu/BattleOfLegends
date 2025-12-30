@@ -26,7 +26,8 @@
       "Bash(done)",
       "Bash(ls:*)",
       "Bash(for file in CombatAction.cs PlayerChangeAction.cs MoraleChangeAction.cs ActionValueChangeAction.cs PhaseChangeAction.cs)",
-      "Bash(do echo \"Processing $file...\")"
+      "Bash(do echo \"Processing $file...\")",
+      "Bash(dotnet clean:*)"
     ],
     "deny": [],
     "ask": []

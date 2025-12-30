@@ -248,6 +248,11 @@ public sealed class HistoryManager
                 return null;
 
             string json = File.ReadAllText(filePath);
+
+            // Debug: Print first 500 characters of JSON to see what we're loading
+            System.Diagnostics.Debug.WriteLine($"[History] JSON content (first 500 chars):");
+            System.Diagnostics.Debug.WriteLine(json.Length > 500 ? json.Substring(0, 500) : json);
+
             var options = new JsonSerializerOptions
             {
                 IncludeFields = true
@@ -255,6 +260,15 @@ public sealed class HistoryManager
 
             var actions = JsonSerializer.Deserialize<List<GameAction>>(json, options);
             System.Diagnostics.Debug.WriteLine($"[History] Loaded {actions?.Count ?? 0} actions from JSON");
+
+            // Debug: print first action details
+            if (actions != null && actions.Count > 0 && actions[0] is UnitMoveAction moveAction)
+            {
+                System.Diagnostics.Debug.WriteLine($"[History] First action notation: {moveAction.GetNotation()}");
+                System.Diagnostics.Debug.WriteLine($"[History] FromPosition: ({moveAction.FromPosition.Row}, {moveAction.FromPosition.Column})");
+                System.Diagnostics.Debug.WriteLine($"[History] ToPosition: ({moveAction.ToPosition.Row}, {moveAction.ToPosition.Column})");
+            }
+
             return actions;
         }
         catch (Exception ex)

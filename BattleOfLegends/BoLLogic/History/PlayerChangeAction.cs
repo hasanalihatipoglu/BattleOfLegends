@@ -5,8 +5,8 @@ namespace BoLLogic;
 /// </summary>
 public class PlayerChangeAction : GameAction
 {
-    public PlayerType PreviousPlayer { get; private set; }
-    public PlayerType NewPlayer { get; private set; }
+    public PlayerType PreviousPlayer { get; set; }
+    public PlayerType NewPlayer { get; set; }
 
     public PlayerChangeAction(PlayerType previousPlayer, PlayerType newPlayer)
         : base(newPlayer) // The new player is the one "taking the action"

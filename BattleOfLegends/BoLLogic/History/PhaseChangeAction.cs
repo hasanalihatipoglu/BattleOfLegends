@@ -5,8 +5,8 @@ namespace BoLLogic;
 /// </summary>
 public class PhaseChangeAction : GameAction
 {
-    public TurnPhase PreviousPhase { get; private set; }
-    public TurnPhase NewPhase { get; private set; }
+    public TurnPhase PreviousPhase { get; set; }
+    public TurnPhase NewPhase { get; set; }
 
     public PhaseChangeAction(PlayerType player, TurnPhase previousPhase, TurnPhase newPhase)
         : base(player)

@@ -5,12 +5,12 @@ namespace BoLLogic;
 /// </summary>
 public class CardPlayAction : GameAction
 {
-    public CardType CardType { get; private set; }
-    public CardState PreviousState { get; private set; }
-    public CardState NewState { get; private set; }
-    public int CardId { get; private set; } // To uniquely identify which card if player has multiple of same type
-    public int HandValueBefore { get; private set; }
-    public int HandValueAfter { get; private set; }
+    public CardType CardType { get; set; }
+    public CardState PreviousState { get; set; }
+    public CardState NewState { get; set; }
+    public int CardId { get; set; } // To uniquely identify which card if player has multiple of same type
+    public int HandValueBefore { get; set; }
+    public int HandValueAfter { get; set; }
 
     public CardPlayAction(PlayerType player, Card card, CardState previousState, CardState newState, int handValueBefore, int handValueAfter)
         : base(player)

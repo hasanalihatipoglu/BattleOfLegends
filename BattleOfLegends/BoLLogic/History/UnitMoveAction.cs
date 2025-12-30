@@ -5,13 +5,13 @@ namespace BoLLogic;
 /// </summary>
 public class UnitMoveAction : GameAction
 {
-    public UnitType UnitType { get; private set; }
-    public Position FromPosition { get; private set; }
-    public Position ToPosition { get; private set; }
-    public UnitState PreviousState { get; private set; }
-    public UnitState NewState { get; private set; }
-    public int PreviousHealth { get; private set; }
-    public int NewHealth { get; private set; }
+    public UnitType UnitType { get; set; }
+    public Position FromPosition { get; set; }
+    public Position ToPosition { get; set; }
+    public UnitState PreviousState { get; set; }
+    public UnitState NewState { get; set; }
+    public int PreviousHealth { get; set; }
+    public int NewHealth { get; set; }
 
     public UnitMoveAction(PlayerType player, Unit unit, Position from, Position to, UnitState previousState, UnitState newState)
         : base(player)
