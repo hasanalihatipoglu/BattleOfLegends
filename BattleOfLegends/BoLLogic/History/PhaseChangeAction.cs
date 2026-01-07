@@ -27,12 +27,30 @@ public class PhaseChangeAction : GameAction
     public override bool Execute(Board board)
     {
         TurnManager.Instance.CurrentTurnPhase = NewPhase;
+
+        // Some phases require switching the current player
+        if (NewPhase == TurnPhase.Move || NewPhase == TurnPhase.Defend ||
+            NewPhase == TurnPhase.Roll || NewPhase == TurnPhase.Counter ||
+            NewPhase == TurnPhase.Advance)
+        {
+            TurnManager.Instance.CurrentPlayer = TurnManager.Instance.CurrentPlayer.Opponent();
+        }
+
         return true;
     }
 
     public override bool Undo(Board board)
     {
         TurnManager.Instance.CurrentTurnPhase = PreviousPhase;
+
+        // When undoing, reverse the player switch if needed
+        if (NewPhase == TurnPhase.Move || NewPhase == TurnPhase.Defend ||
+            NewPhase == TurnPhase.Roll || NewPhase == TurnPhase.Counter ||
+            NewPhase == TurnPhase.Advance)
+        {
+            TurnManager.Instance.CurrentPlayer = TurnManager.Instance.CurrentPlayer.Opponent();
+        }
+
         return true;
     }
 }

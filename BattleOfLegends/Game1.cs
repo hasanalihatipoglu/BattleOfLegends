@@ -1008,20 +1008,7 @@ public class Game1 : Game
 
         if (endRoundButton.Contains(mouseX, mouseY))
         {
-            // Reset both players' action values to 0
-            var romePlayer = _board.Players.FirstOrDefault(p => p.Type == PlayerType.Rome);
-            var carthagePlayer = _board.Players.FirstOrDefault(p => p.Type == PlayerType.Carthage);
-
-            if (romePlayer == null || carthagePlayer == null)
-            {
-                System.Diagnostics.Debug.WriteLine("ERROR: Players not found!");
-                return false;
-            }
-
-            TurnManager.Instance.ChangeCurrentPlayerAction(PlayerType.Rome, -romePlayer.Action.ActionValue);
-            TurnManager.Instance.ChangeCurrentPlayerAction(PlayerType.Carthage, -carthagePlayer.Action.ActionValue);
-
-            // Increment game round - this will trigger OnGameRoundChanged which resets units
+            // Increment game round - RoundResetAction will handle resetting action values and unit states
             TurnManager.Instance.ChangeCurrentGameRound();
 
             // Update CurrentTurn to match CurrentPlayer after round ends
@@ -3074,10 +3061,19 @@ public class Game1 : Game
                 CombatManager.Instance.ChangeUnitState += unit.On_StateChanged;
             }
 
-            // Replay all actions
+            // Replay all actions (skip RoundResetAction as it interferes with state restoration)
             int successCount = 0;
             foreach (var action in historyToReplay)
             {
+                // Skip RoundResetAction during load - it would reset states that subsequent actions restore
+                if (action is RoundResetAction)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Load] Skipping RoundResetAction during replay");
+                    HistoryManager.Instance.RecordAction(action); // Still record it for undo/redo
+                    successCount++;
+                    continue;
+                }
+
                 if (action.Execute(_board))
                 {
                     HistoryManager.Instance.RecordAction(action);

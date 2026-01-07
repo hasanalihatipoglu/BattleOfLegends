@@ -73,31 +73,9 @@ public class GameState(Board board)
             }
         }
 
-        if (CurrentGameRound % 2 == 1)
-        {
-
-            foreach (Unit unit in Board.Units)
-            {
-                unit.State = UnitState.Idle;
-            }
-
-        }
-
-        if (CurrentGameRound % 4 == 1 || CurrentGameRound % 4 == 2)
-        {
-            TurnManager.Instance.CurrentPlayer = Board.InitialPlayer;
-            CurrentPlayer = TurnManager.Instance.CurrentPlayer;
-        }
-        else
-        {
-            TurnManager.Instance.CurrentPlayer = Board.InitialPlayer.Opponent();
-            CurrentPlayer = TurnManager.Instance.CurrentPlayer;
-        }
-
-        foreach (Player player in Board.Players)
-        {
-            player.Action.ActionValue = 0;
-        }
+        // Note: State resets (unit states, player, actions) are handled by explicit game actions
+        // Automatic resets in event handlers prevent correct save/load replay
+        // The game state should only be modified through recorded actions
     }
 
 }

@@ -171,29 +171,9 @@ public sealed class GameManager
             TurnManager.Instance.CurrentGamePhase = GamePhase.End;
         }
 
-        if (CurrentGameRound % 2 == 1)
-        {
-
-            foreach (Unit unit in CurrentBoard.Units)
-            {
-                unit.State = UnitState.Idle;
-            }
-
-        }
-
-        if (CurrentGameRound % 4 == 1 || CurrentGameRound % 4 == 2)
-        {
-            TurnManager.Instance.CurrentPlayer = CurrentBoard.InitialPlayer;
-        }
-        else
-        {
-            TurnManager.Instance.CurrentPlayer = CurrentBoard.InitialPlayer.Opponent();
-        }
-
-        foreach (Player player in CurrentBoard.Players)
-        {
-            player.Action.ActionValue = 0;
-        }
+        // Note: State resets (unit states, player, actions) are handled by explicit game actions
+        // Automatic resets in event handlers prevent correct save/load replay
+        // The game state should only be modified through recorded actions
     }
 
 }

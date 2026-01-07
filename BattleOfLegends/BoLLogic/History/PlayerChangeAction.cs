@@ -22,7 +22,7 @@ public class PlayerChangeAction : GameAction
     {
         string previousName = PreviousPlayer == PlayerType.Rome ? "Rome" : "Carthage";
         string newName = NewPlayer == PlayerType.Rome ? "Rome" : "Carthage";
-        return $"Turn switches from {previousName} to {newName}";
+        return $"Current Player changes from {previousName} to {newName}";
     }
 
     public override bool Execute(Board board)

@@ -58,12 +58,15 @@ public class UnitMoveAction : GameAction
         toTile.Occupied = true;
         unit.Tile = toTile;
         unit.Position = toTile.Position;
+
+        System.Diagnostics.Debug.WriteLine($"[UnitMoveAction.Execute] Setting {unit.Type} state from {unit.State} to {NewState}");
         unit.State = NewState;
         unit.Health.SetHealth(NewHealth);
 
         fromTile.Unit = null;
         fromTile.Occupied = false;
 
+        System.Diagnostics.Debug.WriteLine($"[UnitMoveAction.Execute] Final state: {unit.State}");
         return true;
     }
 

@@ -35,8 +35,19 @@ public class NormalMove(Path path) : Move
         MovePath.TilesInPath.First().Unit = null;
         MovePath.TilesInPath.First().Occupied = false;
 
-        // Record in history after executing
-        UnitState newState = unit.State;
+        // Determine and set the new state based on move distance
+        UnitState newState;
+        if (MovePath.TilesInPath.Count - 1 > unit.AttackMove)
+        {
+            newState = UnitState.Marched;
+        }
+        else
+        {
+            newState = UnitState.Moved;
+        }
+        unit.State = newState;
+
+        // Record in history after executing with the correct final state
         int newHealth = unit.Health.GetHealth();
         var moveAction = new UnitMoveAction(unit.Faction, unit, fromPosition, toPosition, previousState, newState);
         moveAction.UpdateNewHealth(newHealth);

@@ -112,14 +112,7 @@ public sealed class TurnManager
 
     public void ChangeCurrentPlayer()
     {
-        PlayerType previousPlayer = CurrentPlayer;
         CurrentPlayer = CurrentPlayer.Opponent();
-
-        // Record player change in history
-        HistoryManager.Instance.RecordAction(
-            new PlayerChangeAction(previousPlayer, CurrentPlayer)
-        );
-
         ChangePlayer?.Invoke(this, EventArgs.Empty);
     }
 
@@ -128,14 +121,7 @@ public sealed class TurnManager
         // System.Diagnostics.Debug.WriteLine($"SetCurrentPlayer called: trying to set to {player}, current is {CurrentPlayer}");
         if (CurrentPlayer != player)
         {
-            PlayerType previousPlayer = CurrentPlayer;
             CurrentPlayer = player;
-
-            // Record player change in history
-            HistoryManager.Instance.RecordAction(
-                new PlayerChangeAction(previousPlayer, CurrentPlayer)
-            );
-
             // System.Diagnostics.Debug.WriteLine($"Player changed to {CurrentPlayer}, raising ChangePlayer event");
             ChangePlayer?.Invoke(this, EventArgs.Empty);
         }
@@ -170,6 +156,14 @@ public sealed class TurnManager
         HistoryManager.Instance.RecordAction(
             new GameRoundChangeAction(CurrentPlayer, previousRound, CurrentGameRound)
         );
+
+        // Apply round-specific resets (odd rounds reset units, all rounds reset actions)
+        bool resetUnits = (CurrentGameRound % 2 == 1);
+        bool resetActions = true;
+
+        var resetAction = new RoundResetAction(CurrentPlayer, CurrentGameRound, resetUnits, resetActions);
+        resetAction.Execute(GameManager.Instance.CurrentBoard); // Execute immediately in normal gameplay
+        HistoryManager.Instance.RecordAction(resetAction); // Then record for history
 
         ChangeGameRound?.Invoke(this, EventArgs.Empty);
     }
