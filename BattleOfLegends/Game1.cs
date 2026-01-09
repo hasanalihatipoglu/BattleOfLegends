@@ -1183,18 +1183,9 @@ public class Game1 : Game
         _cardCacheDirty = true;
         System.Diagnostics.Debug.WriteLine($"Player changed to: {TurnManager.Instance.CurrentPlayer}");
 
-        // Reset Retreated units to Idle when their faction's turn starts
-        if (_board?.Units != null)
-        {
-            foreach (var unit in _board.Units)
-            {
-                if (unit.Faction == TurnManager.Instance.CurrentPlayer && unit.State == UnitState.Retreated)
-                {
-                    unit.State = UnitState.Idle;
-                    System.Diagnostics.Debug.WriteLine($"{unit} reset from Retreated to Idle at start of {TurnManager.Instance.CurrentPlayer}'s turn");
-                }
-            }
-        }
+        // Note: Retreated units should NOT be automatically reset to Idle
+        // Units that retreated have already spent their action (they attacked and faced a counter-attack)
+        // Therefore, they remain in Retreated state until explicitly moved or reset at round start
     }
 
     private void OnGamePhaseChanged(object sender, EventArgs e)

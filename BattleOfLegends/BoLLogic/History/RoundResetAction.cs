@@ -43,6 +43,17 @@ public class RoundResetAction : GameAction
             }
         }
 
+        // Set current player based on round number (every 2 rounds, player switches)
+        // Rounds 1-2: InitialPlayer, Rounds 3-4: Opponent, etc.
+        if (Round % 4 == 1 || Round % 4 == 2)
+        {
+            TurnManager.Instance.CurrentPlayer = board.InitialPlayer;
+        }
+        else
+        {
+            TurnManager.Instance.CurrentPlayer = board.InitialPlayer.Opponent();
+        }
+
         return true;
     }
 
