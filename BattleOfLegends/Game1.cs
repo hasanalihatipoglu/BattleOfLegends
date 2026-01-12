@@ -861,6 +861,9 @@ public class Game1 : Game
                 // Reset turn phase to Move
                 TurnManager.Instance.CurrentTurnPhase = TurnPhase.Move;
 
+                // Clear target highlights and paths
+                PathFinder.Instance.ResetAll();
+
                 // Trigger events to update UI and cards
                 TurnManager.Instance.TriggerPlayerChangeEvent();
                 TurnManager.Instance.AdvanceTurnPhase(); // Trigger phase change event
@@ -3052,23 +3055,16 @@ public class Game1 : Game
                 CombatManager.Instance.ChangeUnitState += unit.On_StateChanged;
             }
 
-            // Replay all actions (skip RoundResetAction as it interferes with state restoration)
+            // Replay all actions - RoundResetAction will execute fully
+            // Unit states will be set to Idle by RoundResetAction, then subsequent actions will override as needed
             int successCount = 0;
             foreach (var action in historyToReplay)
             {
-                // Skip RoundResetAction during load - it would reset states that subsequent actions restore
-                if (action is RoundResetAction)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Load] Skipping RoundResetAction during replay");
-                    HistoryManager.Instance.RecordAction(action); // Still record it for undo/redo
-                    successCount++;
-                    continue;
-                }
-
                 if (action.Execute(_board))
                 {
                     HistoryManager.Instance.RecordAction(action);
                     successCount++;
+                    System.Diagnostics.Debug.WriteLine($"[Load] Replayed: {action.GetNotation()}");
                 }
                 else
                 {
