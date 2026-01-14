@@ -66,10 +66,16 @@ public static class UnitStateValidator
 
             // From Retreating
             (UnitState.Retreating, UnitState.Retreated) => true,
+            (UnitState.Retreating, UnitState.PushedBack) => true,
 
-            // From Retreated
-            (UnitState.Retreated, UnitState.Passive) => true,
-            (UnitState.Retreated, UnitState.Idle) => true,
+            // From Retreated (forced retreat during opponent's turn - can act on own turn)
+            (UnitState.Retreated, UnitState.Active) => true,  // Can be activated on own turn
+            (UnitState.Retreated, UnitState.Idle) => true,  // Reset at round/turn changes
+            (UnitState.Retreated, UnitState.Passive) => true,  // If clicked, becomes passive
+
+            // From PushedBack (retreat during own turn after counter-attack - already spent action)
+            (UnitState.PushedBack, UnitState.Passive) => true,
+            (UnitState.PushedBack, UnitState.Idle) => true,  // Reset at round/turn changes
 
             // From Advancing
             (UnitState.Advancing, UnitState.Advanced) => true,

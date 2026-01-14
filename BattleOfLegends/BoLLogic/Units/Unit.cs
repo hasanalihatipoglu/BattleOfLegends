@@ -157,6 +157,31 @@ public abstract class Unit : IDisposable
                         PathFinder.Instance.FindPaths(this, this.Tile, PathType.Move);
                         break;
 
+                    case UnitState.Retreated:
+                        // Retreated units can be activated like Idle units (forced retreat during opponent's turn)
+                        if(OrderManager.Instance.NumberOfOrderedUnits>0)
+                        {
+                            break;
+                        }
+
+                        // Check if activating this unit would exceed max action limit
+                        var retreatedPlayer = board.Players.FirstOrDefault(p => p.Type == this.Faction);
+                        if (retreatedPlayer != null && retreatedPlayer.Action.ActionValue >= retreatedPlayer.Action.MaxAction)
+                        {
+                            MessageController.Instance.Show($"Cannot activate unit: Max action limit ({retreatedPlayer.Action.MaxAction}) reached!");
+                            break;
+                        }
+
+                        foreach (Unit u in board.Units)
+                        {
+                            if (u.Faction == TurnManager.Instance.CurrentPlayer && u.State == UnitState.Active)
+                            {
+                                u.State = UnitState.Idle;
+                            }
+                        }
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Active;
+                        PathFinder.Instance.FindPaths(this, this.Tile, PathType.Move);
+                        break;
 
                     case UnitState.Idle:
                         if(OrderManager.Instance.NumberOfOrderedUnits>0)
@@ -192,7 +217,7 @@ public abstract class Unit : IDisposable
                     case UnitState.Moved:
                     case UnitState.Marched:
                     case UnitState.Attacked:
-                    case UnitState.Retreated:
+                    case UnitState.PushedBack:  // PushedBack units can't act (already spent action during own turn)
                     case UnitState.Advanced:
                     case UnitState.Attacking:
                     case UnitState.Defending:
@@ -294,15 +319,23 @@ public abstract class Unit : IDisposable
             case UnitState.Retreating:
                 // Automatic retreat from combat - find and use first available path
                 PathFinder.Instance.FindPaths(this, this.Tile, PathType.Retreat);
+
+                // Determine retreat type:
+                // - Retreated: Forced retreat during OPPONENT'S turn (defending) - can act on own turn
+                // - PushedBack: Retreat during OWN turn (after attacking, counter-attack) - already spent action
+                bool isOwnTurn = (this.Faction == TurnManager.Instance.CurrentPlayer);
+                UnitState finalState = isOwnTurn ? UnitState.PushedBack : UnitState.Retreated;
+
                 if (PathFinder.Instance.CurrentSpaces.Count > 0)
                 {
                     TurnManager.Instance.MakeMove(new NormalMove(PathFinder.Instance.CurrentSpaces.Values.First()));
-                    this.State = UnitState.Retreated;
+                    this.State = finalState;
+                    System.Diagnostics.Debug.WriteLine($"[Retreat] {this} retreated to {finalState} (isOwnTurn={isOwnTurn})");
                 }
                 else
                 {
                     MessageController.Instance.Show($"{this} has no valid retreat path");
-                    this.State = UnitState.Retreated;
+                    this.State = finalState;
                 }
                 PathFinder.Instance.Reset(PathType.Move);
                 break;

@@ -1068,6 +1068,20 @@ public class Game1 : Game
             if (success)
             {
                 MessageController.Instance.Show($"Redone: {description}");
+
+                // If we just redid a GameRoundChangeAction, automatically redo the following RoundResetAction
+                if (description.Contains("advances to round") && HistoryManager.Instance.CanRedo)
+                {
+                    string nextAction = HistoryManager.Instance.PeekRedoAction();
+                    if (nextAction != null && nextAction.Contains("Round") && nextAction.Contains("begins"))
+                    {
+                        var (resetSuccess, resetDescription) = HistoryManager.Instance.Redo();
+                        if (resetSuccess)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[Redo] Auto-redid following action: {resetDescription}");
+                        }
+                    }
+                }
             }
             else
             {

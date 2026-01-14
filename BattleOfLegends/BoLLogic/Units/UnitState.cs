@@ -3,15 +3,16 @@
 public enum UnitState
 {
     None,
-    Idle,        
+    Idle,
     Active,
-    Marched,        
-    Moved,        
+    Marched,
+    Moved,
     Attacked,
     Passive,
     Dead,
     Retreating,
-    Retreated,
+    Retreated,   // Forced retreat during opponent's turn (can still act on own turn)
+    PushedBack,  // Retreat during own turn after counter-attack (already spent action)
     Advancing,
     Advanced,
     Attacking,
