@@ -166,6 +166,121 @@ public sealed class CombatManager
     }
 
 
+    /// <summary>
+    /// Manual combat resolution with specified damage and retreats (no dice rolling)
+    /// </summary>
+    public void ManualCombat(AttackType type, int manualDamage, int manualRetreats)
+    {
+        if (type == AttackType.Normal)
+        {
+            if (OriginalAttackPath?.TilesInPath == null || OriginalAttackPath.TilesInPath.Count == 0)
+            {
+                MessageController.Instance.Show("Invalid combat state!");
+                return;
+            }
+
+            AttackPath = OriginalAttackPath;
+            Attacker = AttackPath.TilesInPath.First().Unit;
+            Target = AttackPath.TilesInPath.Last().Unit;
+
+            if (Attacker == null || Target == null)
+            {
+                MessageController.Instance.Show("Attacker or target is missing!");
+                return;
+            }
+
+            // Validate combat state - check for stale references
+            if (!ValidateCombatState())
+            {
+                MessageController.Instance.Show("Combat state is invalid - units may have moved or died!");
+                ClearCombat(type);
+                return;
+            }
+        }
+
+        // For counter attacks, use the current AttackPath, for normal attacks use OriginalAttackPath
+        Path pathForRetreat = (type == AttackType.Counter) ? AttackPath : OriginalAttackPath;
+        PathFinder.Instance.AssignPath(pathForRetreat, PathType.Attack);
+
+        if (CheckCombat(type) == false)
+            return;
+
+        ResetCombat();
+
+        // Set manual values directly instead of rolling dice
+        NumberOfWounds = manualDamage;
+        NumberOfRetreats = manualRetreats;
+
+        // Apply combat results
+        ManualCalculateCombat(type);
+        ManualEndCombat(type, manualDamage, manualRetreats);
+    }
+
+    /// <summary>
+    /// Calculate combat results with manual values (no dice involved)
+    /// </summary>
+    private bool ManualCalculateCombat(AttackType type)
+    {
+        // Record health before combat
+        int attackerHealthBefore = Attacker.Health.GetHealth();
+        int targetHealthBefore = Target.Health.GetHealth();
+
+        Target.Health.Damage(NumberOfWounds);
+
+        // Record health after combat
+        int attackerHealthAfter = Attacker.Health.GetHealth();
+        int targetHealthAfter = Target.Health.GetHealth();
+
+        // Record combat action in history
+        HistoryManager.Instance.RecordAction(
+            new CombatAction(
+                Attacker.Faction,
+                Attacker,
+                Target,
+                attackerHealthBefore,
+                targetHealthBefore,
+                attackerHealthAfter,
+                targetHealthAfter
+            )
+        );
+
+        if (Target.State != UnitState.Dead && NumberOfRetreats > 0)
+        {
+            NumberOfRetreatSpaces = (Target.MarchMove - 1) * NumberOfRetreats;
+            ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Target, UnitState.Retreating));
+        }
+
+        ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Attacker, AttackerState));
+
+        // Only restore target state if not retreating or retreated
+        if (Target.State != UnitState.Retreating && Target.State != UnitState.Retreated)
+        {
+            ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Target, TargetState));
+        }
+
+        if (type == AttackType.Normal)
+        {
+            CheckAdvance();
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// End combat with manual values display
+    /// </summary>
+    private void ManualEndCombat(AttackType type, int damage, int retreats)
+    {
+        MessageController.Instance.ShowWithOkButton($"{Attacker} attacks {Target}\n" +
+                                $"MANUAL: Damage={damage}, Retreats={retreats}\n" +
+              $"Wounds: {NumberOfWounds}  Retreats: {NumberOfRetreats}");
+
+        MoraleCheck(Attacker, Target);
+
+        ClearCombat(type);
+    }
+
+
     bool CheckCombat(AttackType type)
     {
 

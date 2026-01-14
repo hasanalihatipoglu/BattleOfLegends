@@ -99,6 +99,17 @@ public class Game1 : Game
     private const float ROLL_BUTTON_WIDTH = 120f;
     private const float ROLL_BUTTON_HEIGHT = 60f;
 
+    // Combat input box constants
+    private const float COMBAT_INPUT_WIDTH = 50f;
+    private const float COMBAT_INPUT_HEIGHT = 40f;
+    private const float COMBAT_INPUT_SPACING = 15f;
+
+    // Combat manual input state
+    private string _damageInputText = "";
+    private string _retreatInputText = "";
+    private bool _isDamageInputFocused = false;
+    private bool _isRetreatInputFocused = false;
+
     // Undo/Redo button constants
     private const float UNDO_REDO_BUTTON_WIDTH = 100f;
     private const float UNDO_REDO_BUTTON_HEIGHT = 40f;
@@ -392,6 +403,13 @@ public class Game1 : Game
             !(_previousKeyboardState.IsKeyDown(Keys.LeftControl) && _previousKeyboardState.IsKeyDown(Keys.L)))
         {
             LoadGameFromHistory();
+        }
+
+        // Handle combat input box keyboard input (only when Roll button is visible)
+        if ((_isDamageInputFocused || _isRetreatInputFocused) &&
+            CombatManager.Instance.Attacker != null && CombatManager.Instance.Target != null)
+        {
+            HandleCombatInputKeyboard(keyboardState);
         }
 
         // Update message display timer (only auto-dismiss if it doesn't require OK button)
@@ -1108,6 +1126,12 @@ public class Game1 : Game
 
     private bool HandleRollButtonClick(int mouseX, int mouseY)
     {
+        // First check if clicking on input boxes
+        if (HandleCombatInputBoxClick(mouseX, mouseY))
+        {
+            return true; // Input box was clicked, don't process Roll button
+        }
+
         // Calculate Roll button position (center bottom of screen, above Rome cards)
         float buttonX = (GraphicsDevice.Viewport.Width - ROLL_BUTTON_WIDTH) / 2;
         float buttonY = (GraphicsDevice.Viewport.Height - ROLL_BUTTON_HEIGHT) / 2;
@@ -1124,13 +1148,160 @@ public class Game1 : Game
             var combatManager = CombatManager.Instance;
             if (combatManager.Attacker != null && combatManager.Target != null)
             {
-                // Resolve combat
-                combatManager.Combat(combatManager.Type);
+                // Execute combat with input values (or normal roll if inputs are empty)
+                ExecuteCombatWithInputValues();
             }
             return true;
         }
 
         return false;
+    }
+
+    private void HandleCombatInputKeyboard(KeyboardState keyboardState)
+    {
+        // Handle number keys (0-9)
+        Keys[] numberKeys = { Keys.D0, Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9 };
+        Keys[] numPadKeys = { Keys.NumPad0, Keys.NumPad1, Keys.NumPad2, Keys.NumPad3, Keys.NumPad4, Keys.NumPad5, Keys.NumPad6, Keys.NumPad7, Keys.NumPad8, Keys.NumPad9 };
+
+        for (int i = 0; i < 10; i++)
+        {
+            bool numberPressed = (keyboardState.IsKeyDown(numberKeys[i]) && !_previousKeyboardState.IsKeyDown(numberKeys[i])) ||
+                                 (keyboardState.IsKeyDown(numPadKeys[i]) && !_previousKeyboardState.IsKeyDown(numPadKeys[i]));
+
+            if (numberPressed)
+            {
+                if (_isDamageInputFocused && _damageInputText.Length < 2)
+                {
+                    _damageInputText += i.ToString();
+                }
+                else if (_isRetreatInputFocused && _retreatInputText.Length < 2)
+                {
+                    _retreatInputText += i.ToString();
+                }
+            }
+        }
+
+        // Handle backspace to delete
+        if (keyboardState.IsKeyDown(Keys.Back) && !_previousKeyboardState.IsKeyDown(Keys.Back))
+        {
+            if (_isDamageInputFocused && _damageInputText.Length > 0)
+            {
+                _damageInputText = _damageInputText.Substring(0, _damageInputText.Length - 1);
+            }
+            else if (_isRetreatInputFocused && _retreatInputText.Length > 0)
+            {
+                _retreatInputText = _retreatInputText.Substring(0, _retreatInputText.Length - 1);
+            }
+        }
+
+        // Handle Tab to switch between input boxes
+        if (keyboardState.IsKeyDown(Keys.Tab) && !_previousKeyboardState.IsKeyDown(Keys.Tab))
+        {
+            if (_isDamageInputFocused)
+            {
+                _isDamageInputFocused = false;
+                _isRetreatInputFocused = true;
+            }
+            else if (_isRetreatInputFocused)
+            {
+                _isRetreatInputFocused = false;
+                _isDamageInputFocused = true;
+            }
+        }
+
+        // Handle Enter to execute with current values (same as clicking Roll)
+        if (keyboardState.IsKeyDown(Keys.Enter) && !_previousKeyboardState.IsKeyDown(Keys.Enter))
+        {
+            ExecuteCombatWithInputValues();
+        }
+    }
+
+    private bool HandleCombatInputBoxClick(int mouseX, int mouseY)
+    {
+        // Only handle if Roll button should be visible
+        var combatManager = CombatManager.Instance;
+        if (combatManager.Attacker == null || combatManager.Target == null)
+            return false;
+
+        if (_resolvingCard != null)
+            return false;
+
+        bool isRollPhase = TurnManager.Instance.CurrentTurnPhase == TurnPhase.Roll;
+        bool immediateCardJustDismissed = _immediateCardWasDismissed;
+
+        if (!isRollPhase && !immediateCardJustDismissed)
+            return false;
+
+        // Calculate input box positions (same as in DrawRollButton)
+        float buttonX = (GraphicsDevice.Viewport.Width - ROLL_BUTTON_WIDTH) / 2;
+        float buttonY = (GraphicsDevice.Viewport.Height - ROLL_BUTTON_HEIGHT) / 2;
+
+        // Damage box (left of ROLL button)
+        float damageBoxX = buttonX - COMBAT_INPUT_WIDTH - COMBAT_INPUT_SPACING;
+        float damageBoxY = buttonY + (ROLL_BUTTON_HEIGHT - COMBAT_INPUT_HEIGHT) / 2;
+        Rectangle damageBox = new Rectangle((int)damageBoxX, (int)damageBoxY, (int)COMBAT_INPUT_WIDTH, (int)COMBAT_INPUT_HEIGHT);
+
+        // Retreat box (right of ROLL button)
+        float retreatBoxX = buttonX + ROLL_BUTTON_WIDTH + COMBAT_INPUT_SPACING;
+        float retreatBoxY = buttonY + (ROLL_BUTTON_HEIGHT - COMBAT_INPUT_HEIGHT) / 2;
+        Rectangle retreatBox = new Rectangle((int)retreatBoxX, (int)retreatBoxY, (int)COMBAT_INPUT_WIDTH, (int)COMBAT_INPUT_HEIGHT);
+
+        if (damageBox.Contains(mouseX, mouseY))
+        {
+            _isDamageInputFocused = true;
+            _isRetreatInputFocused = false;
+            return true;
+        }
+        else if (retreatBox.Contains(mouseX, mouseY))
+        {
+            _isRetreatInputFocused = true;
+            _isDamageInputFocused = false;
+            return true;
+        }
+
+        // Click outside input boxes - unfocus both
+        _isDamageInputFocused = false;
+        _isRetreatInputFocused = false;
+        return false;
+    }
+
+    private void ClearCombatInputs()
+    {
+        _damageInputText = "";
+        _retreatInputText = "";
+        _isDamageInputFocused = false;
+        _isRetreatInputFocused = false;
+    }
+
+    private void ExecuteCombatWithInputValues()
+    {
+        var combatManager = CombatManager.Instance;
+        if (combatManager.Attacker == null || combatManager.Target == null)
+            return;
+
+        // Check if any manual values are provided
+        bool hasDamageInput = !string.IsNullOrEmpty(_damageInputText) && int.TryParse(_damageInputText, out int manualDamage);
+        bool hasRetreatInput = !string.IsNullOrEmpty(_retreatInputText) && int.TryParse(_retreatInputText, out int manualRetreats);
+
+        if (hasDamageInput || hasRetreatInput)
+        {
+            // Use manual combat resolution
+            int damage = hasDamageInput ? int.Parse(_damageInputText) : 0;
+            int retreats = hasRetreatInput ? int.Parse(_retreatInputText) : 0;
+
+            combatManager.ManualCombat(combatManager.Type, damage, retreats);
+        }
+        else
+        {
+            // Use normal dice roll combat
+            combatManager.Combat(combatManager.Type);
+        }
+
+        // Clear the input values after combat
+        ClearCombatInputs();
+
+        // Reset the immediate card flag
+        _immediateCardWasDismissed = false;
     }
 
     private void OnMessage(object sender, MessageEventArgs e)
@@ -2900,6 +3071,66 @@ public class Game1 : Game
         else
         {
             DrawSimpleText(_spriteBatch, "ROLL!", new Vector2(rollButton.X + 25, rollButton.Y + 20), Color.White, 1.5f, (int)ROLL_BUTTON_WIDTH - 20);
+        }
+
+        // Draw damage input box (left of ROLL button)
+        float damageBoxX = buttonX - COMBAT_INPUT_WIDTH - COMBAT_INPUT_SPACING;
+        float damageBoxY = buttonY + (ROLL_BUTTON_HEIGHT - COMBAT_INPUT_HEIGHT) / 2;
+        Rectangle damageBox = new Rectangle((int)damageBoxX, (int)damageBoxY, (int)COMBAT_INPUT_WIDTH, (int)COMBAT_INPUT_HEIGHT);
+
+        // Draw damage input background
+        Color damageBoxColor = _isDamageInputFocused ? new Color(60, 60, 80) : new Color(40, 40, 60);
+        _spriteBatch.Draw(_pixelTexture, damageBox, damageBoxColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, damageBox, _isDamageInputFocused ? Color.Yellow : Color.Gray, 2f);
+
+        // Draw damage input text
+        if (_font != null)
+        {
+            string damageText = string.IsNullOrEmpty(_damageInputText) ? "" : _damageInputText;
+            float inputScale = 0.6f;
+            Vector2 damageTextSize = _font.MeasureString(damageText.Length > 0 ? damageText : "0") * inputScale;
+            Vector2 damageTextPos = new Vector2(
+                damageBox.X + (COMBAT_INPUT_WIDTH - damageTextSize.X) / 2,
+                damageBox.Y + (COMBAT_INPUT_HEIGHT - damageTextSize.Y) / 2);
+            _spriteBatch.DrawString(_font, damageText, damageTextPos, Color.White, 0f, Vector2.Zero, inputScale, SpriteEffects.None, 0f);
+
+            // Draw "DMG" label above damage box
+            string dmgLabel = "DMG";
+            Vector2 dmgLabelSize = _font.MeasureString(dmgLabel) * 0.4f;
+            Vector2 dmgLabelPos = new Vector2(
+                damageBox.X + (COMBAT_INPUT_WIDTH - dmgLabelSize.X) / 2,
+                damageBox.Y - dmgLabelSize.Y - 2);
+            _spriteBatch.DrawString(_font, dmgLabel, dmgLabelPos, Color.LightGray, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
+        }
+
+        // Draw retreat input box (right of ROLL button)
+        float retreatBoxX = buttonX + ROLL_BUTTON_WIDTH + COMBAT_INPUT_SPACING;
+        float retreatBoxY = buttonY + (ROLL_BUTTON_HEIGHT - COMBAT_INPUT_HEIGHT) / 2;
+        Rectangle retreatBox = new Rectangle((int)retreatBoxX, (int)retreatBoxY, (int)COMBAT_INPUT_WIDTH, (int)COMBAT_INPUT_HEIGHT);
+
+        // Draw retreat input background
+        Color retreatBoxColor = _isRetreatInputFocused ? new Color(60, 60, 80) : new Color(40, 40, 60);
+        _spriteBatch.Draw(_pixelTexture, retreatBox, retreatBoxColor);
+        DrawRectangle(_spriteBatch, _pixelTexture, retreatBox, _isRetreatInputFocused ? Color.Yellow : Color.Gray, 2f);
+
+        // Draw retreat input text
+        if (_font != null)
+        {
+            string retreatText = string.IsNullOrEmpty(_retreatInputText) ? "" : _retreatInputText;
+            float inputScale = 0.6f;
+            Vector2 retreatTextSize = _font.MeasureString(retreatText.Length > 0 ? retreatText : "0") * inputScale;
+            Vector2 retreatTextPos = new Vector2(
+                retreatBox.X + (COMBAT_INPUT_WIDTH - retreatTextSize.X) / 2,
+                retreatBox.Y + (COMBAT_INPUT_HEIGHT - retreatTextSize.Y) / 2);
+            _spriteBatch.DrawString(_font, retreatText, retreatTextPos, Color.White, 0f, Vector2.Zero, inputScale, SpriteEffects.None, 0f);
+
+            // Draw "RET" label above retreat box
+            string retLabel = "RET";
+            Vector2 retLabelSize = _font.MeasureString(retLabel) * 0.4f;
+            Vector2 retLabelPos = new Vector2(
+                retreatBox.X + (COMBAT_INPUT_WIDTH - retLabelSize.X) / 2,
+                retreatBox.Y - retLabelSize.Y - 2);
+            _spriteBatch.DrawString(_font, retLabel, retLabelPos, Color.LightGray, 0f, Vector2.Zero, 0.4f, SpriteEffects.None, 0f);
         }
     }
 
