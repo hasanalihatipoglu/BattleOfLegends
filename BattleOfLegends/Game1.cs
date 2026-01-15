@@ -866,25 +866,13 @@ public class Game1 : Game
                     return true;
                 }
 
-                // Record as a single compound action in history
-                HistoryManager.Instance.RecordAction(
-                    new EndTurnAction(turnOwnerType, nextTurnOwnerType, previousActionValue)
-                );
-
-                // Execute the action
-                turnOwner.Action.ActionValue = newActionValue;
-                TurnManager.Instance.CurrentPlayer = nextTurnOwnerType;
-                TurnManager.Instance.CurrentTurn = nextTurnOwnerType; // Update whose turn it is
-
-                // Reset turn phase to Move
-                TurnManager.Instance.CurrentTurnPhase = TurnPhase.Move;
+                // Create and execute the END TURN action
+                var endTurnAction = new EndTurnAction(turnOwnerType, nextTurnOwnerType, previousActionValue);
+                endTurnAction.Execute(_board);  // Execute first to reset unit states
+                HistoryManager.Instance.RecordAction(endTurnAction);  // Then record
 
                 // Clear target highlights and paths
                 PathFinder.Instance.ResetAll();
-
-                // Trigger events to update UI and cards
-                TurnManager.Instance.TriggerPlayerChangeEvent();
-                TurnManager.Instance.AdvanceTurnPhase(); // Trigger phase change event
             }
 
             return true;
