@@ -22,7 +22,8 @@ public class CombatAction : GameAction
 
     public CombatAction(PlayerType player, Unit attacker, Unit defender,
         int attackerHealthBefore, int defenderHealthBefore,
-        int attackerHealthAfter, int defenderHealthAfter)
+        int attackerHealthAfter, int defenderHealthAfter,
+        UnitState attackerStateBefore, UnitState defenderStateBefore)
         : base(player)
     {
         _attacker = attacker;
@@ -35,8 +36,8 @@ public class CombatAction : GameAction
         DefenderHealthBefore = defenderHealthBefore;
         AttackerHealthAfter = attackerHealthAfter;
         DefenderHealthAfter = defenderHealthAfter;
-        AttackerStateBefore = attacker.State;
-        DefenderStateBefore = defender.State;
+        AttackerStateBefore = attackerStateBefore;
+        DefenderStateBefore = defenderStateBefore;
     }
 
     // Parameterless constructor for JSON deserialization

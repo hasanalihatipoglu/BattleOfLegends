@@ -240,7 +240,9 @@ public sealed class CombatManager
                 attackerHealthBefore,
                 targetHealthBefore,
                 attackerHealthAfter,
-                targetHealthAfter
+                targetHealthAfter,
+                AttackerState,  // Use the saved state from before combat was declared
+                TargetState     // Use the saved state from before combat was declared
             )
         );
 
@@ -531,7 +533,9 @@ public sealed class CombatManager
                 attackerHealthBefore,
                 targetHealthBefore,
                 attackerHealthAfter,
-                targetHealthAfter
+                targetHealthAfter,
+                AttackerState,  // Use the saved state from before combat was declared
+                TargetState     // Use the saved state from before combat was declared
             )
         );
 
