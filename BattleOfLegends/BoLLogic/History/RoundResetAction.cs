@@ -60,8 +60,12 @@ public class RoundResetAction : GameAction
             System.Diagnostics.Debug.WriteLine($"[RoundResetAction.Execute] Resetting all units to Idle");
             foreach (Unit unit in board.Units)
             {
-                System.Diagnostics.Debug.WriteLine($"[RoundResetAction.Execute] Setting {unit.Type} from {unit.State} to Idle");
-                unit.State = UnitState.Idle;
+                // Skip dead units - they should stay dead
+                if (unit.State != UnitState.Dead)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[RoundResetAction.Execute] Setting {unit.Type} from {unit.State} to Idle");
+                    unit.State = UnitState.Idle;
+                }
             }
         }
 

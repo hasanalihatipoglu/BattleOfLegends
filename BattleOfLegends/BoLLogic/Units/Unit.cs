@@ -27,6 +27,7 @@ public abstract class Unit : IDisposable
     public HealthSystem Health { get; set; }
     public UnitState State { get; set; }
     public UnitState PreviousState { get; set; }
+    public UnitState StateBeforeCombat { get; set; } // Tracks state before entering Defending/Attacking
 
 
 

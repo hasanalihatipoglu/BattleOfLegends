@@ -45,11 +45,12 @@ public class EndTurnAction : GameAction
                 {
                     // Use Faction-UnitType as key since position may change during retreat
                     string key = $"{unit.Faction}-{unit.Type}";
-                    UnitState targetState = unit.PreviousState;
+                    // Use StateBeforeCombat to get the state before combat started (not PreviousState which might be Defending/Attacking)
+                    UnitState targetState = unit.StateBeforeCombat;
 
                     UnitStatesToReset[key] = (unit.State, targetState);
 
-                    // Reset Retreated/Advancing units to their previous state (before they retreated/advanced)
+                    // Reset Retreated/Advancing units to their state before combat
                     unit.State = targetState;
                     System.Diagnostics.Debug.WriteLine($"[EndTurnAction] Reset {unit.Type} ({unit.Faction}) from {UnitStatesToReset[key].CurrentState} to {targetState}");
                 }

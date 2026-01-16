@@ -77,6 +77,9 @@ public sealed class CombatManager
         AttackerState = Attacker.State;
         TargetState = Target.State;
 
+        // Save state before combat for both units (used when retreating/advancing)
+        Attacker.StateBeforeCombat = AttackerState;
+        Target.StateBeforeCombat = TargetState;
 
         ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Attacker, UnitState.Attacking));
         ChangeUnitState?.Invoke(this, new StateChangedEventArgs(Target, UnitState.Defending));
@@ -87,9 +90,10 @@ public sealed class CombatManager
             TurnPhase previousPhase = TurnManager.Instance.CurrentTurnPhase;
             TurnManager.Instance.CurrentTurnPhase = TurnPhase.Attack;
 
-            // Record phase change in history
+            // Record phase change in history with attacker and target information
             HistoryManager.Instance.RecordAction(
-                new PhaseChangeAction(TurnManager.Instance.CurrentPlayer, previousPhase, TurnPhase.Attack)
+                new PhaseChangeAction(TurnManager.Instance.CurrentPlayer, previousPhase, TurnPhase.Attack,
+                    Attacker.Type, Target.Type)
             );
 
             TurnManager.Instance.AdvanceTurnPhase();

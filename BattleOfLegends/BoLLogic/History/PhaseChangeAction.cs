@@ -8,11 +8,18 @@ public class PhaseChangeAction : GameAction
     public TurnPhase PreviousPhase { get; set; }
     public TurnPhase NewPhase { get; set; }
 
-    public PhaseChangeAction(PlayerType player, TurnPhase previousPhase, TurnPhase newPhase)
+    // Optional: Include attacker and target information when changing to Attack phase
+    public UnitType? AttackerType { get; set; }
+    public UnitType? TargetType { get; set; }
+
+    public PhaseChangeAction(PlayerType player, TurnPhase previousPhase, TurnPhase newPhase,
+        UnitType? attackerType = null, UnitType? targetType = null)
         : base(player)
     {
         PreviousPhase = previousPhase;
         NewPhase = newPhase;
+        AttackerType = attackerType;
+        TargetType = targetType;
     }
 
     // Parameterless constructor for JSON deserialization
@@ -21,6 +28,13 @@ public class PhaseChangeAction : GameAction
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";
+
+        // Include attacker and target information when changing to Attack phase
+        if (NewPhase == TurnPhase.Attack && AttackerType.HasValue && TargetType.HasValue)
+        {
+            return $"{playerName} changes phase from {PreviousPhase} to {NewPhase} ({AttackerType.Value} attacks {TargetType.Value})";
+        }
+
         return $"{playerName} changes phase from {PreviousPhase} to {NewPhase}";
     }
 

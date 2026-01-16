@@ -74,7 +74,7 @@ public class Game1 : Game
     private string _currentMessage = null;
     private bool _currentMessageRequiresOk = false;
     private double _messageDisplayTime = 0;
-    private const double MESSAGE_DISPLAY_DURATION = 1.0; // seconds
+    private const double MESSAGE_DISPLAY_DURATION = 2.0; // seconds
     private const float MESSAGE_BOX_WIDTH = 500f;
     private const float MESSAGE_BOX_HEIGHT = 200f; // Increased to fit OK button
     private const float MESSAGE_BOX_PADDING = 20f;
