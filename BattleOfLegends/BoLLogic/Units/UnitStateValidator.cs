@@ -41,6 +41,7 @@ public static class UnitStateValidator
             (UnitState.Moved, UnitState.Attacking) => true,
             (UnitState.Moved, UnitState.Passive) => true,
             (UnitState.Moved, UnitState.Defending) => true,
+            (UnitState.Moved, UnitState.Advancing) => true,  // After move+attack, can advance if eligible
 
             // From Marched
             (UnitState.Marched, UnitState.Passive) => true,

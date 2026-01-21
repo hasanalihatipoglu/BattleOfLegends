@@ -17,6 +17,10 @@ public sealed class HistoryManager
     private readonly Stack<GameAction> _redoStack = new Stack<GameAction>();
     private readonly List<GameAction> _completeHistory = new List<GameAction>();
 
+    // Snapshot-based undo/redo stacks (hybrid approach)
+    private readonly Stack<GameStateSnapshot> _undoSnapshots = new Stack<GameStateSnapshot>();
+    private readonly Stack<GameStateSnapshot> _redoSnapshots = new Stack<GameStateSnapshot>();
+
     private Board _board;
     private bool _isUndoingOrRedoing = false; // Flag to prevent recording during undo/redo
 
@@ -37,6 +41,13 @@ public sealed class HistoryManager
     public void Initialize(Board board)
     {
         _board = board;
+
+        // Capture initial game state (before any actions)
+        // This ensures we can undo all the way back to the start
+        var initialSnapshot = GameStateSnapshot.Capture(board);
+        _undoSnapshots.Push(initialSnapshot);
+
+        System.Diagnostics.Debug.WriteLine("[History] Captured initial game state");
     }
 
     /// <summary>
@@ -48,11 +59,17 @@ public sealed class HistoryManager
         if (_isUndoingOrRedoing)
             return;
 
+        // Capture snapshot AFTER the action (the result state)
+        // This represents what the game looks like after this action was performed
+        var snapshot = GameStateSnapshot.Capture(_board);
+
         _undoStack.Push(action);
+        _undoSnapshots.Push(snapshot);
         _completeHistory.Add(action);
 
-        // Clear redo stack when a new action is performed
+        // Clear redo stacks when a new action is performed
         _redoStack.Clear();
+        _redoSnapshots.Clear();
 
         System.Diagnostics.Debug.WriteLine($"[History] Recorded: {action.GetNotation()}");
     }
@@ -69,34 +86,33 @@ public sealed class HistoryManager
     }
 
     /// <summary>
-    /// Undo the last action
+    /// Undo the last action (using snapshots for reliability)
     /// </summary>
     /// <returns>Tuple of (success, actionDescription)</returns>
     public (bool success, string description) Undo()
     {
-        if (!CanUndo || _board == null)
+        if (!CanUndo || _board == null || _undoSnapshots.Count <= 1)
             return (false, null);
 
         _isUndoingOrRedoing = true;
         try
         {
             var action = _undoStack.Pop();
+            var currentSnapshot = _undoSnapshots.Pop(); // Pop current state
             string description = action.GetNotation();
-            bool success = action.Undo(_board);
 
-            if (success)
-            {
-                _redoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Undid: {description}");
-            }
-            else
-            {
-                // If undo failed, put it back on the undo stack
-                _undoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Failed to undo: {description}");
-            }
+            // The snapshot we want is now at the top (state before this action)
+            var previousSnapshot = _undoSnapshots.Peek();
 
-            return (success, description);
+            // Restore to previous state
+            previousSnapshot.Restore(_board);
+
+            // Push to redo stacks
+            _redoStack.Push(action);
+            _redoSnapshots.Push(currentSnapshot);
+
+            System.Diagnostics.Debug.WriteLine($"[History] Undid (snapshot): {description}");
+            return (true, description);
         }
         finally
         {
@@ -116,34 +132,30 @@ public sealed class HistoryManager
     }
 
     /// <summary>
-    /// Redo the last undone action
+    /// Redo the last undone action (using snapshots for reliability)
     /// </summary>
     /// <returns>Tuple of (success, actionDescription)</returns>
     public (bool success, string description) Redo()
     {
-        if (!CanRedo || _board == null)
+        if (!CanRedo || _board == null || _redoSnapshots.Count == 0)
             return (false, null);
 
         _isUndoingOrRedoing = true;
         try
         {
             var action = _redoStack.Pop();
+            var snapshot = _redoSnapshots.Pop(); // This is the state AFTER the action
             string description = action.GetNotation();
-            bool success = action.Execute(_board);
 
-            if (success)
-            {
-                _undoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Redid: {description}");
-            }
-            else
-            {
-                // If redo failed, put it back on the redo stack
-                _redoStack.Push(action);
-                System.Diagnostics.Debug.WriteLine($"[History] Failed to redo: {description}");
-            }
+            // Restore the snapshot (state after this action was performed)
+            snapshot.Restore(_board);
 
-            return (success, description);
+            // Push back to undo stacks
+            _undoStack.Push(action);
+            _undoSnapshots.Push(snapshot);
+
+            System.Diagnostics.Debug.WriteLine($"[History] Redid (snapshot): {description}");
+            return (true, description);
         }
         finally
         {
@@ -300,13 +312,23 @@ public sealed class HistoryManager
     }
 
     /// <summary>
-    /// Clear all history
+    /// Clear all history (but keep initial snapshot)
     /// </summary>
     public void Clear()
     {
         _undoStack.Clear();
         _redoStack.Clear();
+        _redoSnapshots.Clear();
         _completeHistory.Clear();
+
+        // Re-capture initial state
+        if (_board != null)
+        {
+            _undoSnapshots.Clear();
+            var initialSnapshot = GameStateSnapshot.Capture(_board);
+            _undoSnapshots.Push(initialSnapshot);
+        }
+
         System.Diagnostics.Debug.WriteLine("[History] Cleared all history");
     }
 

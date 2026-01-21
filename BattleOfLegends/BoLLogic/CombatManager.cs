@@ -235,19 +235,17 @@ public sealed class CombatManager
         int attackerHealthAfter = Attacker.Health.GetHealth();
         int targetHealthAfter = Target.Health.GetHealth();
 
-        // Record combat action in history
-        HistoryManager.Instance.RecordAction(
-            new CombatAction(
-                Attacker.Faction,
-                Attacker,
-                Target,
-                attackerHealthBefore,
-                targetHealthBefore,
-                attackerHealthAfter,
-                targetHealthAfter,
-                AttackerState,  // Use the saved state from before combat was declared
-                TargetState     // Use the saved state from before combat was declared
-            )
+        // Create combat action (but don't record yet - need to capture final states first)
+        var combatAction = new CombatAction(
+            Attacker.Faction,
+            Attacker,
+            Target,
+            attackerHealthBefore,
+            targetHealthBefore,
+            attackerHealthAfter,
+            targetHealthAfter,
+            AttackerState,  // Use the saved state from before combat was declared
+            TargetState     // Use the saved state from before combat was declared
         );
 
         if (Target.State != UnitState.Dead && NumberOfRetreats > 0)
@@ -268,6 +266,12 @@ public sealed class CombatManager
         {
             CheckAdvance();
         }
+
+        // Update the combat action with final states after all state changes
+        combatAction.UpdateFinalStates(Attacker.State, Target.State);
+
+        // NOW record the action (snapshot will capture the Advancing state)
+        HistoryManager.Instance.RecordAction(combatAction);
 
         return true;
     }
@@ -528,19 +532,17 @@ public sealed class CombatManager
         int attackerHealthAfter = Attacker.Health.GetHealth();
         int targetHealthAfter = Target.Health.GetHealth();
 
-        // Record combat action in history
-        HistoryManager.Instance.RecordAction(
-            new CombatAction(
-                Attacker.Faction,
-                Attacker,
-                Target,
-                attackerHealthBefore,
-                targetHealthBefore,
-                attackerHealthAfter,
-                targetHealthAfter,
-                AttackerState,  // Use the saved state from before combat was declared
-                TargetState     // Use the saved state from before combat was declared
-            )
+        // Create combat action (but don't record yet - need to capture final states first)
+        var combatAction = new CombatAction(
+            Attacker.Faction,
+            Attacker,
+            Target,
+            attackerHealthBefore,
+            targetHealthBefore,
+            attackerHealthAfter,
+            targetHealthAfter,
+            AttackerState,  // Use the saved state from before combat was declared
+            TargetState     // Use the saved state from before combat was declared
         );
 
         if (Target.State != UnitState.Dead && NumberOfRetreats > 0)
@@ -564,6 +566,12 @@ public sealed class CombatManager
         {
             CheckAdvance();
         }
+
+        // Update the combat action with final states after all state changes
+        combatAction.UpdateFinalStates(Attacker.State, Target.State);
+
+        // NOW record the action (snapshot will capture the Advancing state)
+        HistoryManager.Instance.RecordAction(combatAction);
 
 
         return true;
@@ -615,11 +623,12 @@ public sealed class CombatManager
 
     public void ClearCombat(AttackType type)
     {
-        Attacker = null;
-        Target = null;
-
+        // Only clear Attacker/Target when clearing Normal attack
+        // Counter and First attacks should not clear the original combat context
         if (type == AttackType.Normal)
         {
+            Attacker = null;
+            Target = null;
             DiceModifier = 0;
         }
     }

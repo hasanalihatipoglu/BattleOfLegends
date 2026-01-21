@@ -15,6 +15,8 @@ public class CombatAction : GameAction
     public int DefenderHealthAfter { get; set; }
     public UnitState AttackerStateBefore { get; set; }
     public UnitState DefenderStateBefore { get; set; }
+    public UnitState AttackerStateAfter { get; set; }
+    public UnitState DefenderStateAfter { get; set; }
 
     // Keep references to the actual units for resurrection
     private readonly Unit _attacker;
@@ -43,6 +45,15 @@ public class CombatAction : GameAction
     // Parameterless constructor for JSON deserialization
     public CombatAction() : base() { }
 
+    /// <summary>
+    /// Update the final states after combat is complete
+    /// </summary>
+    public void UpdateFinalStates(UnitState attackerStateAfter, UnitState defenderStateAfter)
+    {
+        AttackerStateAfter = attackerStateAfter;
+        DefenderStateAfter = defenderStateAfter;
+    }
+
     public override string GetNotation()
     {
         string playerName = Player == PlayerType.Rome ? "Rome" : "Carthage";
@@ -68,6 +79,13 @@ public class CombatAction : GameAction
         // Apply the damage
         attackerTile.Unit.Health.SetHealth(AttackerHealthAfter);
         defenderTile.Unit.Health.SetHealth(DefenderHealthAfter);
+
+        // Restore the states after combat
+        attackerTile.Unit.State = AttackerStateAfter;
+        defenderTile.Unit.State = DefenderStateAfter;
+
+        System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Set {attackerTile.Unit.Type} state to {AttackerStateAfter}");
+        System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Set {defenderTile.Unit.Type} state to {DefenderStateAfter}");
 
         return true;
     }

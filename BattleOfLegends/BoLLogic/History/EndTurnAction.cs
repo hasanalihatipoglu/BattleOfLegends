@@ -36,21 +36,29 @@ public class EndTurnAction : GameAction
 
     public override bool Execute(Board board)
     {
-        // Save and reset unit states that are Retreated or Advancing (only on first execution)
+        // Save and reset unit states that need to be reset at end of turn (only on first execution)
         if (UnitStatesToReset.Count == 0)
         {
             foreach (var unit in board.Units)
             {
-                if (unit.State == UnitState.Retreated || unit.State == UnitState.Advancing)
+                // Reset units that are not Idle, Active, or Defending/Attacking (combat states)
+                // States that should be reset: Retreated, Advancing, Attacked, Moved, Marched, Passive, Advanced, PushedBack
+                if (unit.State == UnitState.Retreated ||
+                    unit.State == UnitState.Advancing ||
+                    unit.State == UnitState.Attacked ||
+                    unit.State == UnitState.Moved ||
+                    unit.State == UnitState.Marched ||
+                    unit.State == UnitState.Passive ||
+                    unit.State == UnitState.Advanced ||
+                    unit.State == UnitState.PushedBack)
                 {
                     // Use Faction-UnitType as key since position may change during retreat
                     string key = $"{unit.Faction}-{unit.Type}";
-                    // Use StateBeforeCombat to get the state before combat started (not PreviousState which might be Defending/Attacking)
-                    UnitState targetState = unit.StateBeforeCombat;
+                    UnitState targetState = UnitState.Idle; // All units reset to Idle at end of turn
 
                     UnitStatesToReset[key] = (unit.State, targetState);
 
-                    // Reset Retreated/Advancing units to their state before combat
+                    // Reset unit to Idle
                     unit.State = targetState;
                     System.Diagnostics.Debug.WriteLine($"[EndTurnAction] Reset {unit.Type} ({unit.Faction}) from {UnitStatesToReset[key].CurrentState} to {targetState}");
                 }

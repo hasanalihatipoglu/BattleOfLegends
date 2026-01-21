@@ -405,9 +405,10 @@ public class Game1 : Game
             LoadGameFromHistory();
         }
 
-        // Handle combat input box keyboard input (only when Roll button is visible)
+        // Handle combat input box keyboard input (only when Roll button is visible and not during undo/redo)
         if ((_isDamageInputFocused || _isRetreatInputFocused) &&
-            CombatManager.Instance.Attacker != null && CombatManager.Instance.Target != null)
+            CombatManager.Instance.Attacker != null && CombatManager.Instance.Target != null &&
+            !HistoryManager.Instance.IsUndoingOrRedoing)
         {
             HandleCombatInputKeyboard(keyboardState);
         }
@@ -577,10 +578,10 @@ public class Game1 : Game
             // Check if Roll button is visible (combat declared, Roll phase or immediate card dismissed, and no resolving card) - it's also modal
             else if (CombatManager.Instance.Attacker != null && CombatManager.Instance.Target != null)
             {
-                // Check if button should be active (Roll phase or immediate card dismissed, and no resolving card)
+                // Check if button should be active (Roll phase or immediate card dismissed, no resolving card, and not during undo/redo)
                 bool isRollPhase = TurnManager.Instance.CurrentTurnPhase == TurnPhase.Roll;
                 bool immediateCardJustDismissed = _immediateCardWasDismissed;
-                bool isActive = (isRollPhase || immediateCardJustDismissed) && _resolvingCard == null;
+                bool isActive = (isRollPhase || immediateCardJustDismissed) && _resolvingCard == null && !HistoryManager.Instance.IsUndoingOrRedoing;
 
                 if (isActive)
                 {
@@ -1046,10 +1047,17 @@ public class Game1 : Game
             if (success)
             {
                 MessageController.Instance.Show($"Undone: {description}");
-                // Clear any active selections
+                // Clear any active selections and UI states
                 TurnManager.Instance.SelectedUnit = null;
                 TurnManager.Instance.SelectedCard = null;
                 PathFinder.Instance.ResetAll();
+
+                // Clear combat input states
+                _isDamageInputFocused = false;
+                _isRetreatInputFocused = false;
+                _damageInputText = "";
+                _retreatInputText = "";
+                _immediateCardWasDismissed = false;
             }
             else
             {
@@ -1074,6 +1082,18 @@ public class Game1 : Game
             if (success)
             {
                 MessageController.Instance.Show($"Redone: {description}");
+
+                // Clear any active selections and UI states
+                TurnManager.Instance.SelectedUnit = null;
+                TurnManager.Instance.SelectedCard = null;
+                PathFinder.Instance.ResetAll();
+
+                // Clear combat input states
+                _isDamageInputFocused = false;
+                _isRetreatInputFocused = false;
+                _damageInputText = "";
+                _retreatInputText = "";
+                _immediateCardWasDismissed = false;
 
                 // If we just redid a GameRoundChangeAction, automatically redo the following RoundResetAction
                 if (description.Contains("advances to round") && HistoryManager.Instance.CanRedo)
@@ -3016,6 +3036,10 @@ public class Game1 : Game
 
         // Don't show button while a resolving card is being displayed
         if (_resolvingCard != null)
+            return;
+
+        // Don't show button during undo/redo
+        if (HistoryManager.Instance.IsUndoingOrRedoing)
             return;
 
         // Check if button should be active
