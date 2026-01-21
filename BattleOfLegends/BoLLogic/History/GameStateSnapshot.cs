@@ -37,11 +37,13 @@ public class GameStateSnapshot
             GameRound = board.GameRound
         };
 
-        // Capture units
-        foreach (var unit in board.Units)
+        // Capture units with their index for unique identification
+        for (int i = 0; i < board.Units.Count; i++)
         {
+            var unit = board.Units[i];
             snapshot.Units.Add(new UnitSnapshot
             {
+                Index = i,
                 Type = unit.Type,
                 Faction = unit.Faction,
                 Position = new Position(unit.Position.Row, unit.Position.Column),
@@ -51,16 +53,19 @@ public class GameStateSnapshot
             });
         }
 
-        // Capture cards
-        foreach (var card in board.Cards)
+        // Capture cards with their index for unique identification
+        for (int i = 0; i < board.Cards.Count; i++)
         {
+            var card = board.Cards[i];
             snapshot.Cards.Add(new CardSnapshot
             {
+                Index = i,
                 Type = card.Type,
                 Faction = card.Faction,
                 State = card.State
             });
         }
+        System.Diagnostics.Debug.WriteLine($"[Snapshot] Total cards captured: {snapshot.Cards.Count}");
 
         // Capture players
         foreach (var player in board.Players)
@@ -110,52 +115,70 @@ public class GameStateSnapshot
         TurnManager.Instance.CurrentTurnPhase = TurnPhase;
         TurnManager.Instance.CurrentGameRound = GameRound;
 
-        // First, clear all tile occupancy to start fresh
+        // First, clear all tile occupancy and unit-tile references to start fresh
         foreach (var tile in board.Tiles)
         {
             tile.Unit = null;
             tile.Occupied = false;
         }
+        foreach (var unit in board.Units)
+        {
+            unit.Tile = null;
+        }
 
-        // Restore units to their snapshot positions
+        // Restore units by index (unique identification)
         foreach (var unitSnapshot in Units)
         {
-            var unit = board.Units.FirstOrDefault(u =>
-                u.Type == unitSnapshot.Type && u.Faction == unitSnapshot.Faction);
-
-            if (unit != null)
+            if (unitSnapshot.Index >= 0 && unitSnapshot.Index < board.Units.Count)
             {
-                // Find target tile
-                var targetTile = board.Tiles.FirstOrDefault(t =>
-                    t.Position.Row == unitSnapshot.Position.Row &&
-                    t.Position.Column == unitSnapshot.Position.Column);
+                var unit = board.Units[unitSnapshot.Index];
 
-                if (targetTile != null)
-                {
-                    // Place unit at target position
-                    targetTile.Unit = unit;
-                    targetTile.Occupied = true;
-                    unit.Tile = targetTile;
-                    unit.Position = targetTile.Position;
-                }
-
-                // Restore unit state
+                // Restore unit state first
                 unit.Health.SetHealth(unitSnapshot.Health);
                 unit.State = unitSnapshot.State;
                 unit.StateBeforeCombat = unitSnapshot.StateBeforeCombat;
+
+                // Only place unit on tile if NOT dead
+                if (unitSnapshot.State != UnitState.Dead)
+                {
+                    // Find target tile
+                    var targetTile = board.Tiles.FirstOrDefault(t =>
+                        t.Position.Row == unitSnapshot.Position.Row &&
+                        t.Position.Column == unitSnapshot.Position.Column);
+
+                    if (targetTile != null)
+                    {
+                        // Place unit at target position
+                        targetTile.Unit = unit;
+                        targetTile.Occupied = true;
+                        unit.Tile = targetTile;
+                        unit.Position = targetTile.Position;
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[Snapshot] Restored unit[{unitSnapshot.Index}] {unit.Type} ({unit.Faction}) at ({unitSnapshot.Position.Row},{unitSnapshot.Position.Column}) Health={unitSnapshot.Health} State={unitSnapshot.State}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Snapshot] WARNING: Invalid unit index {unitSnapshot.Index}!");
             }
         }
 
-        // Restore cards
-        for (int i = 0; i < Cards.Count && i < board.Cards.Count; i++)
+        // Restore cards by index (unique identification)
+        foreach (var cardSnapshot in Cards)
         {
-            var cardSnapshot = Cards[i];
-            var card = board.Cards.FirstOrDefault(c =>
-                c.Type == cardSnapshot.Type && c.Faction == cardSnapshot.Faction);
-
-            if (card != null)
+            if (cardSnapshot.Index >= 0 && cardSnapshot.Index < board.Cards.Count)
             {
+                var card = board.Cards[cardSnapshot.Index];
+                var oldState = card.State;
                 card.State = cardSnapshot.State;
+                // Notify UI that card state changed (triggers redraw)
+                card.NotifyStateChanged();
+                System.Diagnostics.Debug.WriteLine($"[Snapshot] Restored card[{cardSnapshot.Index}] {card.Type} ({card.Faction}) from {oldState} to {cardSnapshot.State}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[Snapshot] WARNING: Invalid card index {cardSnapshot.Index}!");
             }
         }
 
@@ -186,6 +209,7 @@ public class GameStateSnapshot
 /// </summary>
 public class UnitSnapshot
 {
+    public int Index { get; set; }  // Index in board.Units list for unique identification
     public UnitType Type { get; set; }
     public PlayerType Faction { get; set; }
     public Position Position { get; set; }
@@ -199,6 +223,7 @@ public class UnitSnapshot
 /// </summary>
 public class CardSnapshot
 {
+    public int Index { get; set; }  // Index in board.Cards list for unique identification
     public CardType Type { get; set; }
     public PlayerType Faction { get; set; }
     public CardState State { get; set; }

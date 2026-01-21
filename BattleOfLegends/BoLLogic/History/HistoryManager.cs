@@ -7,29 +7,30 @@ namespace BoLLogic;
 
 /// <summary>
 /// Manages the game history for undo/redo functionality
+/// Snapshots are only taken at turn boundaries for simplicity and reliability
 /// </summary>
 public sealed class HistoryManager
 {
     private static readonly Lazy<HistoryManager> instance = new Lazy<HistoryManager>(() => new HistoryManager());
     public static HistoryManager Instance => instance.Value;
 
-    private readonly Stack<GameAction> _undoStack = new Stack<GameAction>();
-    private readonly Stack<GameAction> _redoStack = new Stack<GameAction>();
+    // Complete history of all actions (for notation display)
     private readonly List<GameAction> _completeHistory = new List<GameAction>();
 
-    // Snapshot-based undo/redo stacks (hybrid approach)
-    private readonly Stack<GameStateSnapshot> _undoSnapshots = new Stack<GameStateSnapshot>();
-    private readonly Stack<GameStateSnapshot> _redoSnapshots = new Stack<GameStateSnapshot>();
+    // Turn-based snapshots: each snapshot represents the start of a turn
+    private readonly Stack<(GameStateSnapshot snapshot, int turnNumber, PlayerType player)> _undoSnapshots = new();
+    private readonly Stack<(GameStateSnapshot snapshot, int turnNumber, PlayerType player)> _redoSnapshots = new();
 
     private Board _board;
-    private bool _isUndoingOrRedoing = false; // Flag to prevent recording during undo/redo
+    private bool _isUndoingOrRedoing = false;
+    private int _currentTurnNumber = 0;
 
-    public bool CanUndo => _undoStack.Count > 0;
-    public bool CanRedo => _redoStack.Count > 0;
+    public bool CanUndo => _undoSnapshots.Count > 1; // Need at least 2 snapshots to undo (current + previous)
+    public bool CanRedo => _redoSnapshots.Count > 0;
     public bool IsUndoingOrRedoing => _isUndoingOrRedoing;
 
-    public int UndoStackCount => _undoStack.Count;
-    public int RedoStackCount => _redoStack.Count;
+    public int UndoStackCount => _undoSnapshots.Count - 1; // -1 because initial state doesn't count as undoable
+    public int RedoStackCount => _redoSnapshots.Count;
 
     private HistoryManager()
     {
@@ -41,17 +42,18 @@ public sealed class HistoryManager
     public void Initialize(Board board)
     {
         _board = board;
+        _currentTurnNumber = 0;
 
-        // Capture initial game state (before any actions)
-        // This ensures we can undo all the way back to the start
+        // Capture initial game state (Turn 0 - before any player acts)
         var initialSnapshot = GameStateSnapshot.Capture(board);
-        _undoSnapshots.Push(initialSnapshot);
+        _undoSnapshots.Push((initialSnapshot, 0, TurnManager.Instance.CurrentPlayer));
 
-        System.Diagnostics.Debug.WriteLine("[History] Captured initial game state");
+        System.Diagnostics.Debug.WriteLine($"[History] Initialized with Turn 0 snapshot ({TurnManager.Instance.CurrentPlayer}'s turn)");
     }
 
     /// <summary>
     /// Record a new action in the history
+    /// Only EndTurnAction triggers a new snapshot (turn boundary)
     /// </summary>
     public void RecordAction(GameAction action)
     {
@@ -59,59 +61,67 @@ public sealed class HistoryManager
         if (_isUndoingOrRedoing)
             return;
 
-        // Capture snapshot AFTER the action (the result state)
-        // This represents what the game looks like after this action was performed
-        var snapshot = GameStateSnapshot.Capture(_board);
-
-        _undoStack.Push(action);
-        _undoSnapshots.Push(snapshot);
+        // Always add to complete history for notation purposes
         _completeHistory.Add(action);
 
-        // Clear redo stacks when a new action is performed
-        _redoStack.Clear();
-        _redoSnapshots.Clear();
+        // Only capture snapshot when a turn ends (EndTurnAction)
+        // This creates a snapshot at the START of the new player's turn
+        if (action is EndTurnAction endTurnAction)
+        {
+            _currentTurnNumber++;
+
+            // Capture state AFTER the end turn action (start of new player's turn)
+            var snapshot = GameStateSnapshot.Capture(_board);
+            _undoSnapshots.Push((snapshot, _currentTurnNumber, endTurnAction.NewPlayer));
+
+            // Clear redo when new action is performed
+            _redoSnapshots.Clear();
+
+            System.Diagnostics.Debug.WriteLine($"[History] Turn {_currentTurnNumber} snapshot captured ({endTurnAction.NewPlayer}'s turn starting)");
+        }
 
         System.Diagnostics.Debug.WriteLine($"[History] Recorded: {action.GetNotation()}");
     }
 
     /// <summary>
-    /// Get the notation of the next action that would be undone
+    /// Get the notation of the next turn that would be undone
     /// </summary>
     public string PeekUndoAction()
     {
         if (!CanUndo)
             return null;
 
-        return _undoStack.Peek().GetNotation();
+        var current = _undoSnapshots.Peek();
+        return $"Turn {current.turnNumber} ({current.player}'s turn)";
     }
 
     /// <summary>
-    /// Undo the last action (using snapshots for reliability)
+    /// Undo to the previous turn's start
     /// </summary>
-    /// <returns>Tuple of (success, actionDescription)</returns>
     public (bool success, string description) Undo()
     {
-        if (!CanUndo || _board == null || _undoSnapshots.Count <= 1)
+        if (!CanUndo || _board == null)
             return (false, null);
 
         _isUndoingOrRedoing = true;
         try
         {
-            var action = _undoStack.Pop();
-            var currentSnapshot = _undoSnapshots.Pop(); // Pop current state
-            string description = action.GetNotation();
+            // Pop current turn state
+            var currentTurn = _undoSnapshots.Pop();
 
-            // The snapshot we want is now at the top (state before this action)
-            var previousSnapshot = _undoSnapshots.Peek();
+            // Peek at the previous turn (don't pop - we need it as reference)
+            var previousTurn = _undoSnapshots.Peek();
 
-            // Restore to previous state
-            previousSnapshot.Restore(_board);
+            // Restore to previous turn's state
+            previousTurn.snapshot.Restore(_board);
 
-            // Push to redo stacks
-            _redoStack.Push(action);
-            _redoSnapshots.Push(currentSnapshot);
+            // Push to redo stack
+            _redoSnapshots.Push(currentTurn);
 
-            System.Diagnostics.Debug.WriteLine($"[History] Undid (snapshot): {description}");
+            _currentTurnNumber = previousTurn.turnNumber;
+
+            string description = $"Undid to Turn {previousTurn.turnNumber} ({previousTurn.player}'s turn)";
+            System.Diagnostics.Debug.WriteLine($"[History] {description}");
             return (true, description);
         }
         finally
@@ -121,40 +131,41 @@ public sealed class HistoryManager
     }
 
     /// <summary>
-    /// Get the notation of the next action that would be redone
+    /// Get the notation of the next turn that would be redone
     /// </summary>
     public string PeekRedoAction()
     {
         if (!CanRedo)
             return null;
 
-        return _redoStack.Peek().GetNotation();
+        var next = _redoSnapshots.Peek();
+        return $"Turn {next.turnNumber} ({next.player}'s turn)";
     }
 
     /// <summary>
-    /// Redo the last undone action (using snapshots for reliability)
+    /// Redo to the next turn's start
     /// </summary>
-    /// <returns>Tuple of (success, actionDescription)</returns>
     public (bool success, string description) Redo()
     {
-        if (!CanRedo || _board == null || _redoSnapshots.Count == 0)
+        if (!CanRedo || _board == null)
             return (false, null);
 
         _isUndoingOrRedoing = true;
         try
         {
-            var action = _redoStack.Pop();
-            var snapshot = _redoSnapshots.Pop(); // This is the state AFTER the action
-            string description = action.GetNotation();
+            // Pop from redo stack
+            var nextTurn = _redoSnapshots.Pop();
 
-            // Restore the snapshot (state after this action was performed)
-            snapshot.Restore(_board);
+            // Restore the next turn's state
+            nextTurn.snapshot.Restore(_board);
 
-            // Push back to undo stacks
-            _undoStack.Push(action);
-            _undoSnapshots.Push(snapshot);
+            // Push back to undo stack
+            _undoSnapshots.Push(nextTurn);
 
-            System.Diagnostics.Debug.WriteLine($"[History] Redid (snapshot): {description}");
+            _currentTurnNumber = nextTurn.turnNumber;
+
+            string description = $"Redid to Turn {nextTurn.turnNumber} ({nextTurn.player}'s turn)";
+            System.Diagnostics.Debug.WriteLine($"[History] {description}");
             return (true, description);
         }
         finally
@@ -261,10 +272,6 @@ public sealed class HistoryManager
 
             string json = File.ReadAllText(filePath);
 
-            // Debug: Print first 500 characters of JSON to see what we're loading
-            System.Diagnostics.Debug.WriteLine($"[History] JSON content (first 500 chars):");
-            System.Diagnostics.Debug.WriteLine(json.Length > 500 ? json.Substring(0, 500) : json);
-
             var options = new JsonSerializerOptions
             {
                 IncludeFields = true
@@ -272,14 +279,6 @@ public sealed class HistoryManager
 
             var actions = JsonSerializer.Deserialize<List<GameAction>>(json, options);
             System.Diagnostics.Debug.WriteLine($"[History] Loaded {actions?.Count ?? 0} actions from JSON");
-
-            // Debug: print first action details
-            if (actions != null && actions.Count > 0 && actions[0] is UnitMoveAction moveAction)
-            {
-                System.Diagnostics.Debug.WriteLine($"[History] First action notation: {moveAction.GetNotation()}");
-                System.Diagnostics.Debug.WriteLine($"[History] FromPosition: ({moveAction.FromPosition.Row}, {moveAction.FromPosition.Column})");
-                System.Diagnostics.Debug.WriteLine($"[History] ToPosition: ({moveAction.ToPosition.Row}, {moveAction.ToPosition.Column})");
-            }
 
             return actions;
         }
@@ -307,7 +306,6 @@ public sealed class HistoryManager
         if (files.Length == 0)
             return null;
 
-        // Sort by file name (which contains timestamp) and get the most recent
         return files.OrderByDescending(f => f).FirstOrDefault();
     }
 
@@ -316,17 +314,16 @@ public sealed class HistoryManager
     /// </summary>
     public void Clear()
     {
-        _undoStack.Clear();
-        _redoStack.Clear();
         _redoSnapshots.Clear();
         _completeHistory.Clear();
+        _currentTurnNumber = 0;
 
         // Re-capture initial state
         if (_board != null)
         {
             _undoSnapshots.Clear();
             var initialSnapshot = GameStateSnapshot.Capture(_board);
-            _undoSnapshots.Push(initialSnapshot);
+            _undoSnapshots.Push((initialSnapshot, 0, TurnManager.Instance.CurrentPlayer));
         }
 
         System.Diagnostics.Debug.WriteLine("[History] Cleared all history");
@@ -337,10 +334,10 @@ public sealed class HistoryManager
     /// </summary>
     public string GetLastActionNotation()
     {
-        if (_undoStack.Count == 0)
+        if (_completeHistory.Count == 0)
             return "No actions yet";
 
-        return _undoStack.Peek().GetNotation();
+        return _completeHistory[^1].GetNotation();
     }
 
     /// <summary>
@@ -348,10 +345,11 @@ public sealed class HistoryManager
     /// </summary>
     public string GetNextRedoNotation()
     {
-        if (_redoStack.Count == 0)
-            return "No actions to redo";
+        if (_redoSnapshots.Count == 0)
+            return "No turns to redo";
 
-        return _redoStack.Peek().GetNotation();
+        var next = _redoSnapshots.Peek();
+        return $"Turn {next.turnNumber} ({next.player})";
     }
 
     /// <summary>
@@ -371,7 +369,6 @@ public sealed class HistoryManager
         if (files.Length == 0)
             return null;
 
-        // Sort by file name (which contains timestamp) and get the most recent
         return files.OrderByDescending(f => f).FirstOrDefault();
     }
 
@@ -382,4 +379,9 @@ public sealed class HistoryManager
     {
         return new List<GameAction>(_completeHistory);
     }
+
+    /// <summary>
+    /// Get the current turn number
+    /// </summary>
+    public int CurrentTurnNumber => _currentTurnNumber;
 }
