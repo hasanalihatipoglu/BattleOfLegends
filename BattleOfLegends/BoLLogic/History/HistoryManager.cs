@@ -58,7 +58,7 @@ public sealed class HistoryManager
 
     /// <summary>
     /// Record a new action in the history
-    /// Only EndTurnAction triggers a new snapshot (turn boundary)
+    /// Snapshots are captured at turn boundaries (EndTurnAction) and round boundaries (RoundResetAction)
     /// </summary>
     public void RecordAction(GameAction action)
     {
@@ -69,7 +69,7 @@ public sealed class HistoryManager
         // Always add to complete history for notation purposes
         _completeHistory.Add(action);
 
-        // Only capture snapshot when a turn ends (EndTurnAction)
+        // Capture snapshot when a turn ends (EndTurnAction)
         // This creates a snapshot at the START of the new player's turn
         if (action is EndTurnAction endTurnAction)
         {
@@ -82,7 +82,25 @@ public sealed class HistoryManager
             // Clear redo when new action is performed
             _redoSnapshots.Clear();
 
-            System.Diagnostics.Debug.WriteLine($"[History] Turn {_currentTurnNumber} snapshot captured ({endTurnAction.NewPlayer}'s turn starting)");
+            System.Diagnostics.Debug.WriteLine($"[History] Turn {_currentTurnNumber} snapshot captured (Round {_board.GameRound}, {endTurnAction.NewPlayer}'s turn starting)");
+        }
+        // Also capture snapshot when a new round begins (RoundResetAction)
+        // This ensures the new round number is preserved for undo
+        else if (action is RoundResetAction roundResetAction)
+        {
+            // Don't increment turn number - this is a mid-turn event
+            // Replace the current turn's snapshot with an updated one that has the new round
+            if (_undoSnapshots.Count > 0)
+            {
+                var currentTurn = _undoSnapshots.Pop();
+                var updatedSnapshot = GameStateSnapshot.Capture(_board);
+                _undoSnapshots.Push((updatedSnapshot, currentTurn.turnNumber, currentTurn.player));
+
+                // Clear redo when new action is performed
+                _redoSnapshots.Clear();
+
+                System.Diagnostics.Debug.WriteLine($"[History] Turn {currentTurn.turnNumber} snapshot updated for Round {_board.GameRound}");
+            }
         }
 
         System.Diagnostics.Debug.WriteLine($"[History] Recorded: {action.GetNotation()}");
@@ -125,7 +143,7 @@ public sealed class HistoryManager
 
             _currentTurnNumber = previousTurn.turnNumber;
 
-            string description = $"Undid to Turn {previousTurn.turnNumber} ({previousTurn.player}'s turn)";
+            string description = $"Undid to Round {_board.GameRound}, Turn {previousTurn.turnNumber} ({previousTurn.player}'s turn)";
             System.Diagnostics.Debug.WriteLine($"[History] {description}");
             return (true, description);
         }
@@ -169,7 +187,7 @@ public sealed class HistoryManager
 
             _currentTurnNumber = nextTurn.turnNumber;
 
-            string description = $"Redid to Turn {nextTurn.turnNumber} ({nextTurn.player}'s turn)";
+            string description = $"Redid to Round {_board.GameRound}, Turn {nextTurn.turnNumber} ({nextTurn.player}'s turn)";
             System.Diagnostics.Debug.WriteLine($"[History] {description}");
             return (true, description);
         }

@@ -27,12 +27,14 @@ public class GameRoundChangeAction : GameAction
     public override bool Execute(Board board)
     {
         TurnManager.Instance.CurrentGameRound = NewRound;
+        board.GameRound = NewRound;
         return true;
     }
 
     public override bool Undo(Board board)
     {
         TurnManager.Instance.CurrentGameRound = PreviousRound;
+        board.GameRound = PreviousRound;
         return true;
     }
 }
