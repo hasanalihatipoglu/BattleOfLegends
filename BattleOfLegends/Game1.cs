@@ -3301,8 +3301,7 @@ public class Game1 : Game
             GameManager.Instance.CurrentBoard = _board;
             PathFinder.Instance.CurrentBoard = _board;
 
-            // Clear the history manager to start fresh
-            HistoryManager.Instance.Clear();
+            // Initialize history manager (this clears any existing state)
             HistoryManager.Instance.Initialize(_board);
 
             // Resubscribe events for new units

@@ -44,6 +44,11 @@ public sealed class HistoryManager
         _board = board;
         _currentTurnNumber = 0;
 
+        // Clear any existing state first
+        _undoSnapshots.Clear();
+        _redoSnapshots.Clear();
+        _completeHistory.Clear();
+
         // Capture initial game state (Turn 0 - before any player acts)
         var initialSnapshot = GameStateSnapshot.Capture(board);
         _undoSnapshots.Push((initialSnapshot, 0, TurnManager.Instance.CurrentPlayer));
