@@ -165,12 +165,20 @@ public class GameStateSnapshot
         }
 
         // Restore cards by index (unique identification)
+        System.Diagnostics.Debug.WriteLine($"[Snapshot] Restoring {Cards.Count} cards (board has {board.Cards.Count} cards)");
         foreach (var cardSnapshot in Cards)
         {
             if (cardSnapshot.Index >= 0 && cardSnapshot.Index < board.Cards.Count)
             {
                 var card = board.Cards[cardSnapshot.Index];
                 var oldState = card.State;
+
+                // Verify the card at this index matches what we captured
+                if (card.Type != cardSnapshot.Type || card.Faction != cardSnapshot.Faction)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[Snapshot] WARNING: Card mismatch at index {cardSnapshot.Index}! Expected {cardSnapshot.Type} ({cardSnapshot.Faction}), found {card.Type} ({card.Faction})");
+                }
+
                 card.State = cardSnapshot.State;
                 // Notify UI that card state changed (triggers redraw)
                 card.NotifyStateChanged();
@@ -178,7 +186,7 @@ public class GameStateSnapshot
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[Snapshot] WARNING: Invalid card index {cardSnapshot.Index}!");
+                System.Diagnostics.Debug.WriteLine($"[Snapshot] WARNING: Invalid card index {cardSnapshot.Index}! (board.Cards.Count={board.Cards.Count})");
             }
         }
 
@@ -189,8 +197,9 @@ public class GameStateSnapshot
             if (player != null)
             {
                 player.Morale.MoraleValue = playerSnapshot.Morale;
-                player.Hand.HandValue = playerSnapshot.Hand;
                 player.Action.ActionValue = playerSnapshot.Action;
+                // Sync hand value from actual card count (more reliable than stored value)
+                player.Hand.SyncFromCardCount(board);
             }
         }
 

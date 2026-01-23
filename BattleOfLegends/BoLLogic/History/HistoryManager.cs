@@ -57,6 +57,34 @@ public sealed class HistoryManager
     }
 
     /// <summary>
+    /// Capture a snapshot for the current game state after loading.
+    /// This ensures the final state after replay can be returned to via redo.
+    /// </summary>
+    public void CaptureCurrentStateSnapshot()
+    {
+        if (_board == null)
+            return;
+
+        // Only capture if there are already snapshots (i.e., Initialize was called)
+        if (_undoSnapshots.Count == 0)
+            return;
+
+        // Check if the current snapshot already matches the current turn
+        var currentTop = _undoSnapshots.Peek();
+
+        // Capture the current state and replace the top snapshot
+        // This ensures the final loaded state is preserved
+        var currentSnapshot = GameStateSnapshot.Capture(_board);
+
+        // If the top snapshot's turn number matches our current turn, replace it
+        // Otherwise, push a new snapshot for the current mid-turn state
+        _undoSnapshots.Pop();
+        _undoSnapshots.Push((currentSnapshot, currentTop.turnNumber, TurnManager.Instance.CurrentPlayer));
+
+        System.Diagnostics.Debug.WriteLine($"[History] Current state snapshot captured (Round {_board.GameRound}, Turn {currentTop.turnNumber}, {TurnManager.Instance.CurrentPlayer}'s turn)");
+    }
+
+    /// <summary>
     /// Record a new action in the history
     /// Snapshots are captured at turn boundaries (EndTurnAction) and round boundaries (RoundResetAction)
     /// </summary>

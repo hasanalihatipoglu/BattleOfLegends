@@ -1058,6 +1058,9 @@ public class Game1 : Game
                 _damageInputText = "";
                 _retreatInputText = "";
                 _immediateCardWasDismissed = false;
+
+                // Force card cache refresh after undo
+                _cardCacheDirty = true;
             }
             else
             {
@@ -1094,6 +1097,9 @@ public class Game1 : Game
                 _damageInputText = "";
                 _retreatInputText = "";
                 _immediateCardWasDismissed = false;
+
+                // Force card cache refresh after redo
+                _cardCacheDirty = true;
 
                 // If we just redid a GameRoundChangeAction, automatically redo the following RoundResetAction
                 if (description.Contains("advances to round") && HistoryManager.Instance.CanRedo)
@@ -3327,6 +3333,10 @@ public class Game1 : Game
                     System.Diagnostics.Debug.WriteLine($"[Load] Failed to replay action: {action.GetNotation()}");
                 }
             }
+
+            // Capture the final state after all actions are replayed
+            // This ensures the current player and game state are preserved for undo/redo
+            HistoryManager.Instance.CaptureCurrentStateSnapshot();
 
             MessageController.Instance.Show($"Game loaded! Replayed {successCount}/{historyToReplay.Count} actions.");
         }

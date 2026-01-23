@@ -79,23 +79,44 @@ public abstract class Card : IDisposable
             switch (this.State)
             {
                 case CardState.InDeck:
-                    // Check if adding one more card would exceed max hand limit
-                    var player = GameManager.Instance.CurrentBoard.Players.FirstOrDefault(p => p.Type == Faction);
-                    if (player != null && player.Hand.HandValue >= player.Hand.MaxHand)
+                    // Count actual cards in hand for this faction (more reliable than tracking deltas)
+                    var board = GameManager.Instance.CurrentBoard;
+                    var player = board.Players.FirstOrDefault(p => p.Type == Faction);
+                    int actualHandCount = board.Cards.Count(c => c.Faction == Faction &&
+                        (c.State == CardState.InHand || c.State == CardState.ReadyToPlay));
+                    int maxHand = player?.Hand.MaxHand ?? 3;
+
+                    System.Diagnostics.Debug.WriteLine($"[Card.OnClick] {Faction} {Type}: Checking hand limit - ActualHandCount={actualHandCount}, MaxHand={maxHand}");
+
+                    if (actualHandCount >= maxHand)
                     {
                         MessageController.Instance.Show($"Max hand limit reached for {Faction}!");
+                        System.Diagnostics.Debug.WriteLine($"[Card.OnClick] {Faction} {Type}: BLOCKED - hand limit reached");
                         return;
                     }
 
-                    // Pass the hand delta (+1) so history knows what the hand value will be after
+                    // Change card state and sync hand value
                     ChangeCardState(CardState.InHand, handDelta: 1);
-                    TurnManager.Instance.ChangeCurrentPlayerHand(Faction, 1);
+                    // Sync the HandValue to match actual card count
+                    if (player != null)
+                    {
+                        player.Hand.HandValue = actualHandCount + 1;
+                    }
                     break;
 
                 case CardState.InHand:
-                    // Pass the hand delta (-1) so history knows what the hand value will be after
+                    // Count actual cards in hand after removal
+                    var board2 = GameManager.Instance.CurrentBoard;
+                    var player2 = board2.Players.FirstOrDefault(p => p.Type == Faction);
+                    int currentHandCount = board2.Cards.Count(c => c.Faction == Faction &&
+                        (c.State == CardState.InHand || c.State == CardState.ReadyToPlay));
+
                     ChangeCardState(CardState.InDeck, handDelta: -1);
-                    TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, -1);
+                    // Sync the HandValue to match actual card count (minus this card)
+                    if (player2 != null)
+                    {
+                        player2.Hand.HandValue = currentHandCount - 1;
+                    }
                     break;
             }
         }
@@ -119,9 +140,12 @@ public abstract class Card : IDisposable
                     // Click on resolving card to discard it
                     if (IsDiscard)
                     {
-                        // Pass the hand delta (-1) for discarding
+                        var discardBoard = GameManager.Instance.CurrentBoard;
+                        var discardPlayer = discardBoard.Players.FirstOrDefault(p => p.Type == Faction);
+
                         ChangeCardState(CardState.Discarded, handDelta: -1);
-                        TurnManager.Instance.ChangeCurrentPlayerHand(this.Faction, -1);
+                        // Sync hand value from actual card count
+                        discardPlayer?.Hand.SyncFromCardCount(discardBoard);
                     }
                     else
                     {

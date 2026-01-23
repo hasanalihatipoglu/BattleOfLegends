@@ -57,11 +57,11 @@ public class CardPlayAction : GameAction
         if (player == null)
             return false;
 
-        // Restore hand value to what it should be after this action
-        player.Hand.HandValue = HandValueAfter;
-
         // Change card state
         card.State = NewState;
+
+        // Sync hand value from actual card count (more reliable than stored delta values)
+        player.Hand.SyncFromCardCount(board);
 
         // Notify UI that card state changed (e.g., clear _resolvingCard)
         card.NotifyStateChanged();
@@ -70,7 +70,7 @@ public class CardPlayAction : GameAction
         // This ensures the card is in the correct state based on current turn/phase
         card.On_Update(null, EventArgs.Empty);
 
-        System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Execute] {Player} hand: {HandValueBefore} -> {HandValueAfter}, Card {CardType}: {PreviousState} -> {NewState}");
+        System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Execute] {Player} Card {CardType}: {PreviousState} -> {NewState}, Hand synced to {player.Hand.HandValue}");
         return true;
     }
 
@@ -96,11 +96,11 @@ public class CardPlayAction : GameAction
 
         System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] BEFORE: {Player} hand={player.Hand.HandValue}, Card {CardType} state={card.State}");
 
-        // Restore hand value to what it was before this action
-        player.Hand.HandValue = HandValueBefore;
-
         // Restore card state
         card.State = PreviousState;
+
+        // Sync hand value from actual card count (more reliable than stored delta values)
+        player.Hand.SyncFromCardCount(board);
 
         // Notify UI that card state changed (e.g., clear _resolvingCard)
         card.NotifyStateChanged();
@@ -110,7 +110,6 @@ public class CardPlayAction : GameAction
         card.On_Update(null, EventArgs.Empty);
 
         System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] AFTER: {Player} hand={player.Hand.HandValue}, Card {CardType} state={card.State}");
-        System.Diagnostics.Debug.WriteLine($"[CardPlayAction.Undo] Expected: hand {HandValueAfter} -> {HandValueBefore}, state {NewState} -> {PreviousState}");
         return true;
     }
 }
