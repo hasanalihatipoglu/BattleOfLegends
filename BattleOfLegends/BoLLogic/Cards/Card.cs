@@ -102,6 +102,8 @@ public abstract class Card : IDisposable
                     {
                         player.Hand.HandValue = actualHandCount + 1;
                     }
+                    // Trigger update to check if card should immediately become ReadyToPlay
+                    On_Update(null, EventArgs.Empty);
                     break;
 
                 case CardState.InHand:

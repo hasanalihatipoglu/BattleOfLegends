@@ -857,6 +857,23 @@ public class Game1 : Game
             var turnOwner = _board.Players.FirstOrDefault(p => p.Type == turnOwnerType);
             if (turnOwner != null)
             {
+                // Check if there are still Ready units that need to be moved (from Order cards)
+                int readyUnitsCount = OrderManager.Instance.CountReadyUnits(turnOwnerType, _board);
+                if (readyUnitsCount > 0)
+                {
+                    // If Ready units remain, just deactivate current unit and allow next Ready unit
+                    // Don't switch player, don't consume action point
+                    if (TurnManager.Instance.SelectedUnit != null)
+                    {
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
+                        TurnManager.Instance.SelectedUnit = null;
+                    }
+                    PathFinder.Instance.ResetAll();
+                    MessageController.Instance.Show($"{readyUnitsCount} ordered unit(s) remaining - activate next unit");
+                    return true;
+                }
+
+                // No Ready units left - proceed with normal end turn
                 int previousActionValue = turnOwner.Action.ActionValue;
                 int newActionValue = previousActionValue + 1;
 

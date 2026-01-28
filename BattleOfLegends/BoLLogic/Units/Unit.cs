@@ -108,14 +108,17 @@ public abstract class Unit : IDisposable
             {
                 case UnitState.Ready:
                     TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
-                    OrderManager.Instance.NumberOfOrderedUnits--;
+                    // No need to update counter - it will be recalculated from actual unit states
                     break;
 
                 case UnitState.Idle:
-                    if(OrderManager.Instance.NumberOfOrderedUnits < OrderManager.Instance.OrderLimit)
+                    // Count actual ready units instead of using delta-tracked counter
+                    int currentReadyCount = OrderManager.Instance.CountReadyUnits(this.Faction, board);
+
+                    if(currentReadyCount < OrderManager.Instance.OrderLimit)
                     {
                         TurnManager.Instance.SelectedUnit.State = UnitState.Ready;
-                        OrderManager.Instance.NumberOfOrderedUnits++;
+                        // No need to update counter - it will be recalculated from actual unit states
                     }
                     else
                     {
@@ -147,6 +150,20 @@ public abstract class Unit : IDisposable
                             break;
                         }
 
+                        // Reset TurnPhase to Move when activating a Ready unit (only in Turn phase)
+                        // Player must manually transition from Order → Turn phase before activating Ready units
+                        TurnPhase previousTurnPhase = TurnManager.Instance.CurrentTurnPhase;
+                        if (previousTurnPhase != TurnPhase.Move)
+                        {
+                            TurnManager.Instance.CurrentTurnPhase = TurnPhase.Move;
+                            TurnManager.Instance.AdvanceTurnPhase();
+
+                            // Record turn phase change in history
+                            HistoryManager.Instance.RecordAction(
+                                new PhaseChangeAction(TurnManager.Instance.CurrentPlayer, previousTurnPhase, TurnPhase.Move)
+                            );
+                        }
+
                         foreach (Unit u in board.Units)
                         {
                             if (u.Faction == TurnManager.Instance.CurrentPlayer && u.State == UnitState.Active)
@@ -160,7 +177,9 @@ public abstract class Unit : IDisposable
 
                     case UnitState.Retreated:
                         // Retreated units can be activated like Idle units (forced retreat during opponent's turn)
-                        if(OrderManager.Instance.NumberOfOrderedUnits>0)
+                        // During Order phase, block normal activation (count actual ready units)
+                        int retreatedReadyCount = OrderManager.Instance.CountReadyUnits(this.Faction, board);
+                        if(retreatedReadyCount > 0)
                         {
                             break;
                         }
@@ -185,7 +204,9 @@ public abstract class Unit : IDisposable
                         break;
 
                     case UnitState.Idle:
-                        if(OrderManager.Instance.NumberOfOrderedUnits>0)
+                        // During Order phase, block normal activation (count actual ready units)
+                        int idleReadyCount = OrderManager.Instance.CountReadyUnits(this.Faction, board);
+                        if(idleReadyCount > 0)
                         {
                             break;
                         }
@@ -213,6 +234,11 @@ public abstract class Unit : IDisposable
                         TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
                         TurnManager.Instance.SelectedUnit = null;
                         PathFinder.Instance.ResetAll();
+                        break;
+
+                    case UnitState.Locked:
+                        // Locked units cannot be activated because another friendly unit has already moved
+                        MessageController.Instance.Show("Unit locked - another friendly unit has already moved this turn");
                         break;
 
                     case UnitState.Moved:

@@ -28,6 +28,7 @@ public static class UnitStateValidator
             // From Idle
             (UnitState.Idle, UnitState.Active) => true,
             (UnitState.Idle, UnitState.Defending) => true,
+            (UnitState.Idle, UnitState.Locked) => true,
 
             // From Active
             (UnitState.Active, UnitState.Moved) => true,
@@ -93,6 +94,10 @@ public static class UnitStateValidator
             // From Ready
             (UnitState.Ready, UnitState.Active) => true,
             (UnitState.Ready, UnitState.Idle) => true,
+
+            // From Locked
+            (UnitState.Locked, UnitState.Idle) => true,  // Reset at turn end
+            (UnitState.Locked, UnitState.Defending) => true,  // Can be attacked by opponent
 
             // Default - invalid transition
             _ => false

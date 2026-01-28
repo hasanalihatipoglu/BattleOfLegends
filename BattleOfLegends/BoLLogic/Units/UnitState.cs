@@ -17,6 +17,7 @@ public enum UnitState
     Advanced,
     Attacking,
     Defending,
-    Ready
+    Ready,
+    Locked       // Locked from activation because another friendly unit has already moved
 }
 

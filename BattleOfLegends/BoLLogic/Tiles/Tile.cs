@@ -102,14 +102,12 @@ public abstract class Tile
 
                         if (PathFinder.Instance.CurrentSpaces[this].TilesInPath.Count - 1 > TurnManager.Instance.SelectedUnit.AttackMove)
                         {
-                            TurnManager.Instance.SelectedUnit.State = UnitState.Marched;
                             TurnManager.Instance.SelectedUnit = null;
                             PathFinder.Instance.ResetAll();
                         }
 
                         else
                         {
-                            TurnManager.Instance.SelectedUnit.State = UnitState.Moved;
                             PathFinder.Instance.Reset(PathType.Move);
                             PathFinder.Instance.FindPaths(TurnManager.Instance.SelectedUnit, this, PathType.Attack);
 

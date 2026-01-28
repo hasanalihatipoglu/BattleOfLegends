@@ -270,6 +270,22 @@ public sealed class CombatManager
         // Update the combat action with final states after all state changes
         combatAction.UpdateFinalStates(Attacker.State, Target.State);
 
+        // Lock all other friendly Idle units after NORMAL attack only (not counter or first attacks)
+        if (type == AttackType.Normal)
+        {
+            var board = GameManager.Instance.CurrentBoard;
+            foreach (Unit u in board.Units)
+            {
+                if (u.Faction == Attacker.Faction && u != Attacker && u.State == UnitState.Idle)
+                {
+                    string key = $"{u.Faction}-{u.Type}";
+                    u.State = UnitState.Locked;
+                    combatAction.LockedUnits.Add(key);
+                    System.Diagnostics.Debug.WriteLine($"[CombatManager.ManualCalculateCombat] Locked {u.Type} ({u.Faction}) after Normal attack");
+                }
+            }
+        }
+
         // NOW record the action (snapshot will capture the Advancing state)
         HistoryManager.Instance.RecordAction(combatAction);
 
@@ -569,6 +585,22 @@ public sealed class CombatManager
 
         // Update the combat action with final states after all state changes
         combatAction.UpdateFinalStates(Attacker.State, Target.State);
+
+        // Lock all other friendly Idle units after NORMAL attack only (not counter or first attacks)
+        if (type == AttackType.Normal)
+        {
+            var board = GameManager.Instance.CurrentBoard;
+            foreach (Unit u in board.Units)
+            {
+                if (u.Faction == Attacker.Faction && u != Attacker && u.State == UnitState.Idle)
+                {
+                    string key = $"{u.Faction}-{u.Type}";
+                    u.State = UnitState.Locked;
+                    combatAction.LockedUnits.Add(key);
+                    System.Diagnostics.Debug.WriteLine($"[CombatManager.CalculateCombat] Locked {u.Type} ({u.Faction}) after Normal attack");
+                }
+            }
+        }
 
         // NOW record the action (snapshot will capture the Advancing state)
         HistoryManager.Instance.RecordAction(combatAction);

@@ -84,6 +84,15 @@ public sealed class OrderManager
         IsOrderGiven = false;
     }
 
+    /// <summary>
+    /// Counts the actual number of units in Ready state for the given faction.
+    /// This is more reliable than tracking deltas, especially during undo/redo.
+    /// </summary>
+    public int CountReadyUnits(PlayerType faction, Board board)
+    {
+        return board.Units.Count(u => u.Faction == faction && u.State == UnitState.Ready);
+    }
+
 
 }
 

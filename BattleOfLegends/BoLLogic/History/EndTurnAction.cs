@@ -36,21 +36,23 @@ public class EndTurnAction : GameAction
 
     public override bool Execute(Board board)
     {
-        // Save and reset unit states that are Retreated or Advancing (only on first execution)
+        // Save and reset unit states that are Retreated, Advancing, or Locked (only on first execution)
         if (UnitStatesToReset.Count == 0)
         {
             foreach (var unit in board.Units)
             {
-                if (unit.State == UnitState.Retreated || unit.State == UnitState.Advancing)
+                if (unit.State == UnitState.Retreated || unit.State == UnitState.Advancing || unit.State == UnitState.Locked)
                 {
                     // Use Faction-UnitType as key since position may change during retreat
                     string key = $"{unit.Faction}-{unit.Type}";
-                    // Use StateBeforeCombat to get the state before combat started (not PreviousState which might be Defending/Attacking)
-                    UnitState targetState = unit.StateBeforeCombat;
+
+                    // For Locked units, always reset to Idle
+                    // For Retreated/Advancing, use StateBeforeCombat to get the state before combat
+                    UnitState targetState = unit.State == UnitState.Locked ? UnitState.Idle : unit.StateBeforeCombat;
 
                     UnitStatesToReset[key] = (unit.State, targetState);
 
-                    // Reset Retreated/Advancing units to their state before combat
+                    // Reset units to their target state
                     unit.State = targetState;
                     System.Diagnostics.Debug.WriteLine($"[EndTurnAction] Reset {unit.Type} ({unit.Faction}) from {UnitStatesToReset[key].CurrentState} to {targetState}");
                 }

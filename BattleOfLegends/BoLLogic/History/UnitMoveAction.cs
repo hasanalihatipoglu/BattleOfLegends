@@ -13,6 +13,10 @@ public class UnitMoveAction : GameAction
     public int PreviousHealth { get; set; }
     public int NewHealth { get; set; }
 
+    // Track units that were locked by this move (for undo/redo)
+    // Key format: "Faction-UnitType" to uniquely identify units
+    public List<string> LockedUnits { get; set; } = new List<string>();
+
     public UnitMoveAction(PlayerType player, Unit unit, Position from, Position to, UnitState previousState, UnitState newState)
         : base(player)
     {
@@ -66,6 +70,24 @@ public class UnitMoveAction : GameAction
         fromTile.Unit = null;
         fromTile.Occupied = false;
 
+        // Lock the units that were recorded as locked by this move (during redo/load)
+        if ((NewState == UnitState.Moved || NewState == UnitState.Marched) && LockedUnits.Count > 0)
+        {
+            foreach (string key in LockedUnits)
+            {
+                var parts = key.Split('-');
+                PlayerType faction = Enum.Parse<PlayerType>(parts[0]);
+                UnitType unitType = Enum.Parse<UnitType>(parts[1]);
+
+                var lockedUnit = board.Units.FirstOrDefault(u => u.Faction == faction && u.Type == unitType);
+                if (lockedUnit != null && lockedUnit != unit)
+                {
+                    lockedUnit.State = UnitState.Locked;
+                    System.Diagnostics.Debug.WriteLine($"[UnitMoveAction.Execute] Locked {lockedUnit.Type} ({lockedUnit.Faction}) (replay)");
+                }
+            }
+        }
+
         System.Diagnostics.Debug.WriteLine($"[UnitMoveAction.Execute] Final state: {unit.State}");
         return true;
     }
@@ -91,6 +113,21 @@ public class UnitMoveAction : GameAction
 
         toTile.Unit = null;
         toTile.Occupied = false;
+
+        // Unlock units that were locked by this move
+        foreach (string key in LockedUnits)
+        {
+            var parts = key.Split('-');
+            PlayerType faction = Enum.Parse<PlayerType>(parts[0]);
+            UnitType unitType = Enum.Parse<UnitType>(parts[1]);
+
+            var lockedUnit = board.Units.FirstOrDefault(u => u.Faction == faction && u.Type == unitType);
+            if (lockedUnit != null && lockedUnit.State == UnitState.Locked)
+            {
+                lockedUnit.State = UnitState.Idle;
+                System.Diagnostics.Debug.WriteLine($"[UnitMoveAction.Undo] Unlocked {lockedUnit.Type} ({lockedUnit.Faction})");
+            }
+        }
 
         return true;
     }
