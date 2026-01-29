@@ -28,6 +28,7 @@ public abstract class Unit : IDisposable
     public UnitState State { get; set; }
     public UnitState PreviousState { get; set; }
     public UnitState StateBeforeCombat { get; set; } // Tracks state before entering Defending/Attacking
+    public UnitState StateBeforeLocked { get; set; } // Tracks state before being Locked (Idle/Ready/Active)
 
 
 

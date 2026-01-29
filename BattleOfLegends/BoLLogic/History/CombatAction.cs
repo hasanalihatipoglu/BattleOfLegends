@@ -19,8 +19,9 @@ public class CombatAction : GameAction
     public UnitState DefenderStateAfter { get; set; }
 
     // Track units that were locked by this attack (for undo/redo)
-    // Key format: "Faction-UnitType" to uniquely identify units
-    public List<string> LockedUnits { get; set; } = new List<string>();
+    // Key: "Faction-UnitType" to uniquely identify units
+    // Value: Previous state before locking (Idle or Ready)
+    public Dictionary<string, UnitState> LockedUnits { get; set; } = new Dictionary<string, UnitState>();
 
     // Keep references to the actual units for resurrection
     private readonly Unit _attacker;
@@ -94,8 +95,9 @@ public class CombatAction : GameAction
         // Lock the units that were recorded as locked by this attack (during redo/load)
         if (LockedUnits.Count > 0)
         {
-            foreach (string key in LockedUnits)
+            foreach (var kvp in LockedUnits)
             {
+                string key = kvp.Key;
                 var parts = key.Split('-');
                 PlayerType faction = Enum.Parse<PlayerType>(parts[0]);
                 UnitType unitType = Enum.Parse<UnitType>(parts[1]);
@@ -104,7 +106,7 @@ public class CombatAction : GameAction
                 if (lockedUnit != null && lockedUnit != attackerTile.Unit)
                 {
                     lockedUnit.State = UnitState.Locked;
-                    System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Locked {lockedUnit.Type} ({lockedUnit.Faction}) (replay)");
+                    System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Locked {lockedUnit.Type} ({lockedUnit.Faction}) from {kvp.Value} (replay)");
                 }
             }
         }
@@ -186,9 +188,11 @@ public class CombatAction : GameAction
             System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Defender unit reference is null");
         }
 
-        // Unlock units that were locked by this attack
-        foreach (string key in LockedUnits)
+        // Unlock units that were locked by this attack and restore their previous state
+        foreach (var kvp in LockedUnits)
         {
+            string key = kvp.Key;
+            UnitState previousState = kvp.Value;
             var parts = key.Split('-');
             PlayerType faction = Enum.Parse<PlayerType>(parts[0]);
             UnitType unitType = Enum.Parse<UnitType>(parts[1]);
@@ -196,8 +200,8 @@ public class CombatAction : GameAction
             var lockedUnit = board.Units.FirstOrDefault(u => u.Faction == faction && u.Type == unitType);
             if (lockedUnit != null && lockedUnit.State == UnitState.Locked)
             {
-                lockedUnit.State = UnitState.Idle;
-                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Unlocked {lockedUnit.Type} ({lockedUnit.Faction})");
+                lockedUnit.State = previousState;  // Restore to Idle or Ready
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Unlocked {lockedUnit.Type} ({lockedUnit.Faction}) to {previousState}");
             }
         }
 

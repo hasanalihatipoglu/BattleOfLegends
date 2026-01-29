@@ -858,8 +858,12 @@ public class Game1 : Game
             if (turnOwner != null)
             {
                 // Check if there are still Ready units that need to be moved (from Order cards)
+                // Count both Ready units AND Locked units that were originally Ready
                 int readyUnitsCount = OrderManager.Instance.CountReadyUnits(turnOwnerType, _board);
-                if (readyUnitsCount > 0)
+                int lockedReadyUnitsCount = _board.Units.Count(u => u.Faction == turnOwnerType && u.State == UnitState.Locked && u.StateBeforeLocked == UnitState.Ready);
+                int totalOrderedUnitsRemaining = readyUnitsCount + lockedReadyUnitsCount;
+
+                if (totalOrderedUnitsRemaining > 0)
                 {
                     // If Ready units remain, just deactivate current unit and allow next Ready unit
                     // Don't switch player, don't consume action point
@@ -868,8 +872,19 @@ public class Game1 : Game
                         TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
                         TurnManager.Instance.SelectedUnit = null;
                     }
+
+                    // Unlock any Locked units that were originally Ready, so they can be activated next
+                    foreach (var unit in _board.Units)
+                    {
+                        if (unit.Faction == turnOwnerType && unit.State == UnitState.Locked && unit.StateBeforeLocked == UnitState.Ready)
+                        {
+                            unit.State = UnitState.Ready;
+                            System.Diagnostics.Debug.WriteLine($"[Game1.EndTurn] Unlocked {unit.Type} back to Ready for next ordered activation");
+                        }
+                    }
+
                     PathFinder.Instance.ResetAll();
-                    MessageController.Instance.Show($"{readyUnitsCount} ordered unit(s) remaining - activate next unit");
+                    MessageController.Instance.Show($"{totalOrderedUnitsRemaining} ordered unit(s) remaining - activate next unit");
                     return true;
                 }
 

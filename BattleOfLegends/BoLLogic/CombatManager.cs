@@ -270,18 +270,20 @@ public sealed class CombatManager
         // Update the combat action with final states after all state changes
         combatAction.UpdateFinalStates(Attacker.State, Target.State);
 
-        // Lock all other friendly Idle units after NORMAL attack only (not counter or first attacks)
+        // Lock all other friendly Idle/Ready units after NORMAL attack only (not counter or first attacks)
         if (type == AttackType.Normal)
         {
             var board = GameManager.Instance.CurrentBoard;
             foreach (Unit u in board.Units)
             {
-                if (u.Faction == Attacker.Faction && u != Attacker && u.State == UnitState.Idle)
+                if (u.Faction == Attacker.Faction && u != Attacker && (u.State == UnitState.Idle || u.State == UnitState.Ready))
                 {
                     string key = $"{u.Faction}-{u.Type}";
+                    UnitState previousState = u.State;  // Capture state before locking
+                    u.StateBeforeLocked = previousState;  // Store for EndTurnAction to restore
                     u.State = UnitState.Locked;
-                    combatAction.LockedUnits.Add(key);
-                    System.Diagnostics.Debug.WriteLine($"[CombatManager.ManualCalculateCombat] Locked {u.Type} ({u.Faction}) after Normal attack");
+                    combatAction.LockedUnits[key] = previousState;  // Store previous state for undo
+                    System.Diagnostics.Debug.WriteLine($"[CombatManager.ManualCalculateCombat] Locked {u.Type} ({u.Faction}) from {previousState} after Normal attack");
                 }
             }
         }
@@ -586,18 +588,20 @@ public sealed class CombatManager
         // Update the combat action with final states after all state changes
         combatAction.UpdateFinalStates(Attacker.State, Target.State);
 
-        // Lock all other friendly Idle units after NORMAL attack only (not counter or first attacks)
+        // Lock all other friendly Idle/Ready units after NORMAL attack only (not counter or first attacks)
         if (type == AttackType.Normal)
         {
             var board = GameManager.Instance.CurrentBoard;
             foreach (Unit u in board.Units)
             {
-                if (u.Faction == Attacker.Faction && u != Attacker && u.State == UnitState.Idle)
+                if (u.Faction == Attacker.Faction && u != Attacker && (u.State == UnitState.Idle || u.State == UnitState.Ready))
                 {
                     string key = $"{u.Faction}-{u.Type}";
+                    UnitState previousState = u.State;  // Capture state before locking
+                    u.StateBeforeLocked = previousState;  // Store for EndTurnAction to restore
                     u.State = UnitState.Locked;
-                    combatAction.LockedUnits.Add(key);
-                    System.Diagnostics.Debug.WriteLine($"[CombatManager.CalculateCombat] Locked {u.Type} ({u.Faction}) after Normal attack");
+                    combatAction.LockedUnits[key] = previousState;  // Store previous state for undo
+                    System.Diagnostics.Debug.WriteLine($"[CombatManager.CalculateCombat] Locked {u.Type} ({u.Faction}) from {previousState} after Normal attack");
                 }
             }
         }

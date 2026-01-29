@@ -47,35 +47,25 @@ public class NormalMove(Path path) : Move
         }
         unit.State = newState;
 
-        // Lock all other friendly Idle units if this unit moved or marched
-        var board = GameManager.Instance.CurrentBoard;
-        if (newState == UnitState.Moved || newState == UnitState.Marched)
-        {
-            foreach (Unit u in board.Units)
-            {
-                if (u.Faction == unit.Faction && u != unit && u.State == UnitState.Idle)
-                {
-                    string key = $"{u.Faction}-{u.Type}";
-                    u.State = UnitState.Locked;
-                    System.Diagnostics.Debug.WriteLine($"[NormalMove.Execute] Locked {u.Type} ({u.Faction})");
-                }
-            }
-        }
-
         // Record in history after executing with the correct final state
         int newHealth = unit.Health.GetHealth();
         var moveAction = new UnitMoveAction(unit.Faction, unit, fromPosition, toPosition, previousState, newState);
         moveAction.UpdateNewHealth(newHealth);
 
-        // Record which units were locked by this move (for undo/redo)
+        // Lock all other friendly Idle/Ready units if this unit moved or marched
+        var board = GameManager.Instance.CurrentBoard;
         if (newState == UnitState.Moved || newState == UnitState.Marched)
         {
             foreach (Unit u in board.Units)
             {
-                if (u.Faction == unit.Faction && u != unit && u.State == UnitState.Locked)
+                if (u.Faction == unit.Faction && u != unit && (u.State == UnitState.Idle || u.State == UnitState.Ready))
                 {
                     string key = $"{u.Faction}-{u.Type}";
-                    moveAction.LockedUnits.Add(key);
+                    UnitState previousUnitState = u.State;  // Capture state before locking
+                    u.StateBeforeLocked = previousUnitState;  // Store for EndTurnAction to restore
+                    u.State = UnitState.Locked;
+                    moveAction.LockedUnits[key] = previousUnitState;  // Store previous state for undo
+                    System.Diagnostics.Debug.WriteLine($"[NormalMove.Execute] Locked {u.Type} ({u.Faction}) from {previousUnitState}");
                 }
             }
         }

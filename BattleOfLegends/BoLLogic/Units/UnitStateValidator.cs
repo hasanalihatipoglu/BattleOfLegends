@@ -36,6 +36,7 @@ public static class UnitStateValidator
             (UnitState.Active, UnitState.Attacking) => true,
             (UnitState.Active, UnitState.Idle) => true,
             (UnitState.Active, UnitState.Passive) => true,
+            (UnitState.Active, UnitState.Locked) => true,  // Locked when another unit acts during ordered activation
 
             // From Moved
             (UnitState.Moved, UnitState.Attacked) => true,
@@ -94,9 +95,12 @@ public static class UnitStateValidator
             // From Ready
             (UnitState.Ready, UnitState.Active) => true,
             (UnitState.Ready, UnitState.Idle) => true,
+            (UnitState.Ready, UnitState.Locked) => true,  // Locked when another unit acts
 
             // From Locked
             (UnitState.Locked, UnitState.Idle) => true,  // Reset at turn end
+            (UnitState.Locked, UnitState.Ready) => true,  // Restored when action is undone
+            (UnitState.Locked, UnitState.Active) => true,  // Restored when action is undone (during ordered activation)
             (UnitState.Locked, UnitState.Defending) => true,  // Can be attacked by opponent
 
             // Default - invalid transition

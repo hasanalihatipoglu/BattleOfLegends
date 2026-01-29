@@ -46,9 +46,9 @@ public class EndTurnAction : GameAction
                     // Use Faction-UnitType as key since position may change during retreat
                     string key = $"{unit.Faction}-{unit.Type}";
 
-                    // For Locked units, always reset to Idle
+                    // For Locked units, restore to StateBeforeLocked (Idle/Ready/Active)
                     // For Retreated/Advancing, use StateBeforeCombat to get the state before combat
-                    UnitState targetState = unit.State == UnitState.Locked ? UnitState.Idle : unit.StateBeforeCombat;
+                    UnitState targetState = unit.State == UnitState.Locked ? unit.StateBeforeLocked : unit.StateBeforeCombat;
 
                     UnitStatesToReset[key] = (unit.State, targetState);
 
