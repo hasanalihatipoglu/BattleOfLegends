@@ -84,6 +84,7 @@ public class UnitMoveAction : GameAction
                 var lockedUnit = board.Units.FirstOrDefault(u => u.Faction == faction && u.Type == unitType);
                 if (lockedUnit != null && lockedUnit != unit)
                 {
+                    lockedUnit.StateBeforeLocked = kvp.Value;  // Set previous state for EndTurnAction to restore
                     lockedUnit.State = UnitState.Locked;
                     System.Diagnostics.Debug.WriteLine($"[UnitMoveAction.Execute] Locked {lockedUnit.Type} ({lockedUnit.Faction}) from {kvp.Value} (replay)");
                 }

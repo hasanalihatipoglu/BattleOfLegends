@@ -29,6 +29,7 @@ public abstract class Unit : IDisposable
     public UnitState PreviousState { get; set; }
     public UnitState StateBeforeCombat { get; set; } // Tracks state before entering Defending/Attacking
     public UnitState StateBeforeLocked { get; set; } // Tracks state before being Locked (Idle/Ready/Active)
+    public UnitState StateBeforeActive { get; set; } // Tracks state before becoming Active (Idle/Ready/Retreated)
 
 
 
@@ -172,6 +173,7 @@ public abstract class Unit : IDisposable
                                 u.State = UnitState.Idle;
                             }
                         }
+                        TurnManager.Instance.SelectedUnit.StateBeforeActive = UnitState.Ready;  // Track state before activation
                         TurnManager.Instance.SelectedUnit.State = UnitState.Active;
                         PathFinder.Instance.FindPaths(this, this.Tile, PathType.Move);
                         break;
@@ -200,6 +202,7 @@ public abstract class Unit : IDisposable
                                 u.State = UnitState.Idle;
                             }
                         }
+                        TurnManager.Instance.SelectedUnit.StateBeforeActive = UnitState.Retreated;  // Track state before activation
                         TurnManager.Instance.SelectedUnit.State = UnitState.Active;
                         PathFinder.Instance.FindPaths(this, this.Tile, PathType.Move);
                         break;
@@ -227,12 +230,14 @@ public abstract class Unit : IDisposable
                                 u.State = UnitState.Idle;
                             }
                         }
+                        TurnManager.Instance.SelectedUnit.StateBeforeActive = UnitState.Idle;  // Track state before activation
                         TurnManager.Instance.SelectedUnit.State = UnitState.Active;
                         PathFinder.Instance.FindPaths(this, this.Tile, PathType.Move);
                         break;
 
                     case UnitState.Active:
-                        TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
+                        // Return to the state before activation (Ready, Idle, or Retreated)
+                        TurnManager.Instance.SelectedUnit.State = TurnManager.Instance.SelectedUnit.StateBeforeActive;
                         TurnManager.Instance.SelectedUnit = null;
                         PathFinder.Instance.ResetAll();
                         break;

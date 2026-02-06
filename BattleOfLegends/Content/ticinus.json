@@ -201,7 +201,7 @@
     {
       "Faction": "Rome",
       "Card": "MixedOrder",
-      "State": "InDeck"
+      "State": "InHand"
     },
     {
         "Faction": "Rome",
@@ -241,7 +241,7 @@
     {
         "Faction": "Rome",
         "Card": "CavalryCounter",
-        "State": "InHand"
+        "State": "InDeck"
     },
     {
       "Faction": "Rome",
@@ -281,7 +281,7 @@
     {
         "Faction": "Carthage",
         "Card": "CavalryCharge",
-        "State": "InHand"
+        "State": "InDeck"
     },
     {
       "Faction": "Carthage",
@@ -351,7 +351,7 @@
     {
       "Faction": "Carthage",
       "Card": "MixedOrder",
-      "State": "InDeck"
+      "State": "InHand"
     }
   ],
   "CurrentPlayer": "Carthage",

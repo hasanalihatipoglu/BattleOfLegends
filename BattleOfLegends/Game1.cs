@@ -869,7 +869,21 @@ public class Game1 : Game
                     // Don't switch player, don't consume action point
                     if (TurnManager.Instance.SelectedUnit != null)
                     {
-                        TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
+                        // If SelectedUnit is Locked and was Ready before, restore to Ready instead of Idle
+                        if (TurnManager.Instance.SelectedUnit.State == UnitState.Locked &&
+                            TurnManager.Instance.SelectedUnit.StateBeforeLocked == UnitState.Ready)
+                        {
+                            TurnManager.Instance.SelectedUnit.State = UnitState.Ready;
+                        }
+                        else if (TurnManager.Instance.SelectedUnit.State == UnitState.Active)
+                        {
+                            // Restore Active unit to its state before activation
+                            TurnManager.Instance.SelectedUnit.State = TurnManager.Instance.SelectedUnit.StateBeforeActive;
+                        }
+                        else
+                        {
+                            TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
+                        }
                         TurnManager.Instance.SelectedUnit = null;
                     }
 
@@ -1108,7 +1122,7 @@ public class Game1 : Game
         Rectangle redoButton = new Rectangle(
             (int)redoButtonX,
             (int)redoButtonY,
-            (int)UNDO_REDO_BUTTON_WIDTH,
+            (int)UNDO_REDO_BUTTON_WIDTH,  
             (int)UNDO_REDO_BUTTON_HEIGHT);
 
         if (redoButton.Contains(mouseX, mouseY) && HistoryManager.Instance.CanRedo)
@@ -3347,6 +3361,16 @@ public class Game1 : Game
             {
                 unit.Health.ChangeUnitState += unit.On_StateChanged;
                 CombatManager.Instance.ChangeUnitState += unit.On_StateChanged;
+            }
+
+            // Resubscribe events for new cards (for animations and state updates)
+            foreach (var card in _board.Cards)
+            {
+                card.ChangeState += OnCardStateChanged;
+                TurnManager.Instance.ChangeTurnPhase -= card.On_Update;
+                TurnManager.Instance.ChangeTurnPhase += card.On_Update;
+                TurnManager.Instance.ChangePlayer -= card.On_Update;
+                TurnManager.Instance.ChangePlayer += card.On_Update;
             }
 
             // Replay all actions - RoundResetAction will execute fully

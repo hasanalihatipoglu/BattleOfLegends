@@ -256,12 +256,12 @@
     {
       "Faction": "Rome",
       "Card": "CavalryPursue",
-      "State": "InHand"
+      "State": "InDeck"
     },
     {
       "Faction": "Rome",
       "Card": "MixedOrder",
-      "State": "InDeck"
+      "State": "InHand"
     },
     {
       "Faction": "Rome",
@@ -276,7 +276,7 @@
         {
       "Faction": "Carthage",
       "Card": "MixedOrder",
-      "State": "InDeck"
+      "State": "InHand"
     },
     {
       "Faction": "Carthage",

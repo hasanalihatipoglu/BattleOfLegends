@@ -13,6 +13,7 @@ public class RoundResetAction : GameAction
     public Dictionary<string, UnitState> PreviousUnitStates { get; set; } = new Dictionary<string, UnitState>();
     public Dictionary<PlayerType, int> PreviousActionValues { get; set; } = new Dictionary<PlayerType, int>();
     public PlayerType PreviousPlayer { get; set; }
+    public int PreviousRound { get; set; }
 
     public RoundResetAction(PlayerType player, int round, bool resetUnitStates, bool resetActionValues)
         : base(player)
@@ -21,6 +22,7 @@ public class RoundResetAction : GameAction
         ResetUnitStates = resetUnitStates;
         ResetActionValues = resetActionValues;
         PreviousPlayer = TurnManager.Instance.CurrentPlayer;
+        PreviousRound = TurnManager.Instance.CurrentGameRound;
     }
 
     // Parameterless constructor for JSON deserialization
@@ -93,6 +95,10 @@ public class RoundResetAction : GameAction
         TurnManager.Instance.CurrentTurn = newPlayer;
         board.CurrentPlayer = newPlayer;
 
+        // Update the game round
+        board.GameRound = Round;
+        TurnManager.Instance.CurrentGameRound = Round;
+
         return true;
     }
 
@@ -128,6 +134,10 @@ public class RoundResetAction : GameAction
         TurnManager.Instance.CurrentPlayer = PreviousPlayer;
         TurnManager.Instance.CurrentTurn = PreviousPlayer;
         board.CurrentPlayer = PreviousPlayer;
+
+        // Restore previous round
+        board.GameRound = PreviousRound;
+        TurnManager.Instance.CurrentGameRound = PreviousRound;
 
         return true;
     }

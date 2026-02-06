@@ -50,7 +50,8 @@ public class GameStateSnapshot
                 Health = unit.Health.GetHealth(),
                 State = unit.State,
                 StateBeforeCombat = unit.StateBeforeCombat,
-                StateBeforeLocked = unit.StateBeforeLocked
+                StateBeforeLocked = unit.StateBeforeLocked,
+                StateBeforeActive = unit.StateBeforeActive
             });
         }
 
@@ -139,6 +140,7 @@ public class GameStateSnapshot
                 unit.State = unitSnapshot.State;
                 unit.StateBeforeCombat = unitSnapshot.StateBeforeCombat;
                 unit.StateBeforeLocked = unitSnapshot.StateBeforeLocked;
+                unit.StateBeforeActive = unitSnapshot.StateBeforeActive;
 
                 // Only place unit on tile if NOT dead
                 if (unitSnapshot.State != UnitState.Dead)
@@ -228,6 +230,7 @@ public class UnitSnapshot
     public UnitState State { get; set; }
     public UnitState StateBeforeCombat { get; set; }
     public UnitState StateBeforeLocked { get; set; }
+    public UnitState StateBeforeActive { get; set; }
 }
 
 /// <summary>

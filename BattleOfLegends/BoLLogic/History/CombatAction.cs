@@ -18,12 +18,16 @@ public class CombatAction : GameAction
     public UnitState AttackerStateAfter { get; set; }
     public UnitState DefenderStateAfter { get; set; }
 
+    // Faction of attacker and defender for unit lookup after deserialization
+    public PlayerType AttackerFaction { get; set; }
+    public PlayerType DefenderFaction { get; set; }
+
     // Track units that were locked by this attack (for undo/redo)
     // Key: "Faction-UnitType" to uniquely identify units
     // Value: Previous state before locking (Idle or Ready)
     public Dictionary<string, UnitState> LockedUnits { get; set; } = new Dictionary<string, UnitState>();
 
-    // Keep references to the actual units for resurrection
+    // Keep references to the actual units for resurrection (not serialized, used for runtime only)
     private readonly Unit _attacker;
     private readonly Unit _defender;
 
@@ -36,8 +40,10 @@ public class CombatAction : GameAction
         _attacker = attacker;
         _defender = defender;
         AttackerType = attacker.Type;
+        AttackerFaction = attacker.Faction;
         AttackerPosition = attacker.Position;
         DefenderType = defender.Type;
+        DefenderFaction = defender.Faction;
         DefenderPosition = defender.Position;
         AttackerHealthBefore = attackerHealthBefore;
         DefenderHealthBefore = defenderHealthBefore;
@@ -105,6 +111,7 @@ public class CombatAction : GameAction
                 var lockedUnit = board.Units.FirstOrDefault(u => u.Faction == faction && u.Type == unitType);
                 if (lockedUnit != null && lockedUnit != attackerTile.Unit)
                 {
+                    lockedUnit.StateBeforeLocked = kvp.Value;  // Set previous state for EndTurnAction to restore
                     lockedUnit.State = UnitState.Locked;
                     System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Locked {lockedUnit.Type} ({lockedUnit.Faction}) from {kvp.Value} (replay)");
                 }
@@ -136,26 +143,31 @@ public class CombatAction : GameAction
             attackerTile.Unit.State = AttackerStateBefore;
             System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Restored alive attacker health to {AttackerHealthBefore}");
         }
-        else if (_attacker != null)
-        {
-            // Attacker was eliminated, resurrect it
-            // Step 1: Restore health first (so unit is no longer "dead")
-            _attacker.Health.SetHealth(AttackerHealthBefore);
-
-            // Step 2: Place unit back on the tile BEFORE changing state
-            // This ensures the unit has a valid tile reference
-            _attacker.Tile = attackerTile;
-            _attacker.Position = attackerTile.Position;
-            attackerTile.Unit = _attacker;
-            attackerTile.Occupied = true;
-
-            // Step 3: Change state last (after unit is properly positioned)
-            _attacker.State = AttackerStateBefore;
-            System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Resurrected attacker with health {AttackerHealthBefore}");
-        }
         else
         {
-            System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Attacker unit reference is null");
+            // Attacker was eliminated, resurrect it
+            // Use _attacker if available (runtime), otherwise find by Faction+Type (after deserialization)
+            var attackerUnit = _attacker ?? board.Units.FirstOrDefault(u => u.Faction == AttackerFaction && u.Type == AttackerType);
+            if (attackerUnit != null)
+            {
+                // Step 1: Restore health first (so unit is no longer "dead")
+                attackerUnit.Health.SetHealth(AttackerHealthBefore);
+
+                // Step 2: Place unit back on the tile BEFORE changing state
+                // This ensures the unit has a valid tile reference
+                attackerUnit.Tile = attackerTile;
+                attackerUnit.Position = attackerTile.Position;
+                attackerTile.Unit = attackerUnit;
+                attackerTile.Occupied = true;
+
+                // Step 3: Change state last (after unit is properly positioned)
+                attackerUnit.State = AttackerStateBefore;
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Resurrected attacker with health {AttackerHealthBefore}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Could not find attacker unit for resurrection");
+            }
         }
 
         // Restore defender
@@ -166,26 +178,31 @@ public class CombatAction : GameAction
             defenderTile.Unit.State = DefenderStateBefore;
             System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Restored alive defender health to {DefenderHealthBefore}");
         }
-        else if (_defender != null)
-        {
-            // Defender was eliminated, resurrect it
-            // Step 1: Restore health first (so unit is no longer "dead")
-            _defender.Health.SetHealth(DefenderHealthBefore);
-
-            // Step 2: Place unit back on the tile BEFORE changing state
-            // This ensures the unit has a valid tile reference
-            _defender.Tile = defenderTile;
-            _defender.Position = defenderTile.Position;
-            defenderTile.Unit = _defender;
-            defenderTile.Occupied = true;
-
-            // Step 3: Change state last (after unit is properly positioned)
-            _defender.State = DefenderStateBefore;
-            System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Resurrected defender with health {DefenderHealthBefore}");
-        }
         else
         {
-            System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Defender unit reference is null");
+            // Defender was eliminated, resurrect it
+            // Use _defender if available (runtime), otherwise find by Faction+Type (after deserialization)
+            var defenderUnit = _defender ?? board.Units.FirstOrDefault(u => u.Faction == DefenderFaction && u.Type == DefenderType);
+            if (defenderUnit != null)
+            {
+                // Step 1: Restore health first (so unit is no longer "dead")
+                defenderUnit.Health.SetHealth(DefenderHealthBefore);
+
+                // Step 2: Place unit back on the tile BEFORE changing state
+                // This ensures the unit has a valid tile reference
+                defenderUnit.Tile = defenderTile;
+                defenderUnit.Position = defenderTile.Position;
+                defenderTile.Unit = defenderUnit;
+                defenderTile.Occupied = true;
+
+                // Step 3: Change state last (after unit is properly positioned)
+                defenderUnit.State = DefenderStateBefore;
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Resurrected defender with health {DefenderHealthBefore}");
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Could not find defender unit for resurrection");
+            }
         }
 
         // Unlock units that were locked by this attack and restore their previous state
