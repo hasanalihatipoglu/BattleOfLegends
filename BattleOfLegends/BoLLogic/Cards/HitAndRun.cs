@@ -14,6 +14,8 @@ public class HitAndRun(PlayerType faction) : Card
 
     public override UnitClass Target => UnitClass.Cavalry;
 
+    public override CardClass Class => CardClass.Attack;
+
     public override bool IsDiscard => true;
 
 

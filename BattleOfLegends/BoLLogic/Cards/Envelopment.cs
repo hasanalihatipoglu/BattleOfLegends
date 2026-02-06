@@ -12,6 +12,8 @@ public class Envelopment(PlayerType faction) : Card
 
     public override UnitClass Target => UnitClass.None;
 
+    public override CardClass Class => CardClass.Attack;
+
     public override bool IsDiscard => true;
 
     int numberOfFlankingUnits=0;

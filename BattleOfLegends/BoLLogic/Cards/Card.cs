@@ -5,6 +5,7 @@ public abstract class Card : IDisposable
     private bool _disposed = false;
 
     public abstract CardType Type { get; }
+    public abstract CardClass Class { get; }
     public abstract PlayerType Faction { get; }
     public abstract TurnPhase Timing { get; }
     public abstract UnitClass Target { get; }

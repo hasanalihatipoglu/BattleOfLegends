@@ -14,6 +14,7 @@ public class CavalryCharge(PlayerType faction) : Card
     
     public override bool IsDiscard => true;
 
+    public override CardClass Class => CardClass.Attack;
 
     public override bool IsValid()
     {

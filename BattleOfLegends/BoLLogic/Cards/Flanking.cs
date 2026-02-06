@@ -14,6 +14,8 @@ public class Flanking(PlayerType faction) : Card
 
     public override UnitClass Target => UnitClass.None;
 
+    public override CardClass Class => CardClass.Attack;
+
     public override bool IsDiscard => true;
 
 

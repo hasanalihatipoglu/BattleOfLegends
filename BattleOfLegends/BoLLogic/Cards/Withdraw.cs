@@ -14,6 +14,8 @@ public class Withdraw(PlayerType faction) : Card
 
     public override UnitClass Target => UnitClass.None;
 
+    public override CardClass Class => CardClass.Defense;
+
     public override bool IsDiscard => true;
 
 

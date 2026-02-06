@@ -16,3 +16,13 @@ public enum CardType
     MixedOrder
 
 }
+
+
+public enum CardClass
+{
+    Order,
+    Attack,
+    Defense,
+    None
+
+}

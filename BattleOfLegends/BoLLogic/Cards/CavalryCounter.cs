@@ -13,7 +13,11 @@ public class CavalryCounter(PlayerType faction) : Card
 
     public override UnitClass Target => UnitClass.Cavalry;
 
+    public override CardClass Class => CardClass.Defense;
+
     public override bool IsDiscard => true;
+
+
 
 
     public override bool IsValid()

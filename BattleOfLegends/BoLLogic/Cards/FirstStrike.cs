@@ -12,6 +12,8 @@ public class FirstStrike(PlayerType faction) : Card
 
     public override UnitClass Target => UnitClass.Infantry;
 
+    public override CardClass Class => CardClass.Defense;
+
     public override bool IsDiscard => true;
 
 
