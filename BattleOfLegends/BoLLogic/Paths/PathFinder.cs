@@ -170,19 +170,27 @@ public sealed class PathFinder
 
             case PathType.Retreat:
                 if (tile.Cost <= CombatManager.Instance.NumberOfRetreatSpaces
-                    && !CurrentFrontier.Tiles.Contains(tile)
-                    && !tile.Occupied)
+                    && !CurrentFrontier.Tiles.Contains(tile))
                 {
-                    valid = true;
+                    // Allow tile if not occupied, OR if occupied by friendly light unit
+                    if (!tile.Occupied ||
+                        (tile.Unit?.Faction == unit.Faction && tile.Unit?.IsLight == true))
+                    {
+                        valid = true;
+                    }
                 }
                 break;
 
             case PathType.Withdraw:
                 if (tile.Cost <= unit.MarchMove-1
-                    && !CurrentFrontier.Tiles.Contains(tile)
-                    && !tile.Occupied)
+                    && !CurrentFrontier.Tiles.Contains(tile))
                 {
-                    valid = true;
+                    // Allow tile if not occupied, OR if occupied by friendly light unit
+                    if (!tile.Occupied ||
+                        (tile.Unit?.Faction == unit.Faction && tile.Unit?.IsLight == true))
+                    {
+                        valid = true;
+                    }
                 }
                 break;
 
@@ -319,20 +327,48 @@ public sealed class PathFinder
             case PathType.Retreat:
                 if (CurrentFrontier.Tiles.Count > 0)
                 {
-                    // Find max cost tile efficiently without sorting - O(n) instead of O(n log n)
-                    Tile maxCostTile = CurrentFrontier.Tiles[0];
+                    // Find max cost UNOCCUPIED tile as destination (can pass through friendly light units but not end on them)
+                    // Find both max unoccupied and overall max for support checking
+                    Tile maxCostTile = null;
+                    int maxUnoccupiedCost = -1;
+
                     foreach (var tile in CurrentFrontier.Tiles)
                     {
-                        if (tile.Cost > maxCostTile.Cost)
+                        if (!tile.Occupied && tile.Cost > maxUnoccupiedCost)
                         {
                             maxCostTile = tile;
+                            maxUnoccupiedCost = tile.Cost;
                         }
                     }
+
+                    // If all tiles are occupied (only friendly light units in path), use first tile as fallback for support
+                    if (maxCostTile == null)
+                    {
+                        maxCostTile = CurrentFrontier.Tiles[0];
+                    }
+
                     int numberOfUnresolvedRetreatSpaces = CombatManager.Instance.NumberOfRetreatSpaces - maxCostTile.Cost;
 
-                    var adjacents = FindAdjacents(maxCostTile, PathType.Retreat);
-                    if (adjacents.Count > 0 && adjacents.First()?.Unit?.Faction == unit.Faction)
+                    // Check if maxCostTile itself is occupied by a friendly unit (can't end movement on occupied tile)
+                    // This provides support regardless of whether the unit is light or heavy
+                    if (maxCostTile.Unit != null && maxCostTile.Unit.Faction == unit.Faction)
+                    {
                         numberOfUnresolvedRetreatSpaces = 0;
+                    }
+                    else
+                    {
+                        // Check adjacent tile in retreat direction for support
+                        var adjacents = FindAdjacents(maxCostTile, PathType.Retreat);
+                        if (adjacents.Count > 0 && adjacents.First()?.Unit?.Faction == unit.Faction)
+                        {
+                            // Only support if the friendly unit is NOT light (heavy units block retreat)
+                            // Light units allow retreating units to pass through
+                            if (adjacents.First()?.Unit?.IsLight == false)
+                            {
+                                numberOfUnresolvedRetreatSpaces = 0;
+                            }
+                        }
+                    }
 
                     AddToSpaces(maxCostTile, origin);
                     unit.Health.Damage(numberOfUnresolvedRetreatSpaces);
