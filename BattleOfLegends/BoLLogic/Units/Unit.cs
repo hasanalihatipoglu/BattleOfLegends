@@ -109,8 +109,30 @@ public abstract class Unit : IDisposable
             switch (TurnManager.Instance.SelectedUnit.State)
             {
                 case UnitState.Ready:
-                    TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
+                    // If this is a leader, return to Ordered state (remove self from order)
+                    if (this.Type == UnitType.Leader)
+                    {
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Ordered;
+                    }
+                    else
+                    {
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Idle;
+                    }
                     // No need to update counter - it will be recalculated from actual unit states
+                    break;
+
+                case UnitState.Ordered:
+                    // Leader in Ordered state - can add self to order (become Ready)
+                    int leaderReadyCount = OrderManager.Instance.CountReadyUnits(this.Faction, board);
+
+                    if(leaderReadyCount < OrderManager.Instance.OrderLimit)
+                    {
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Ready;
+                    }
+                    else
+                    {
+                        MessageController.Instance.Show("Order Limit Reached");
+                    }
                     break;
 
                 case UnitState.Idle:
@@ -205,6 +227,21 @@ public abstract class Unit : IDisposable
                         TurnManager.Instance.SelectedUnit.StateBeforeActive = UnitState.Retreated;  // Track state before activation
                         TurnManager.Instance.SelectedUnit.State = UnitState.Active;
                         PathFinder.Instance.FindPaths(this, this.Tile, PathType.Move);
+                        break;
+
+                    case UnitState.Ordered:
+                        // Leader in Ordered state has already given an order - cannot act, becomes Passive
+                        TurnManager.Instance.SelectedUnit.State = UnitState.Passive;
+                        foreach (Unit u in board.Units)
+                        {
+                            if (u.Faction == TurnManager.Instance.CurrentPlayer && u.State == UnitState.Active)
+                            {
+                                u.State = UnitState.Idle;
+                            }
+                        }
+                        TurnManager.Instance.SelectedUnit = null;
+                        PathFinder.Instance.ResetAll();
+                        MessageController.Instance.Show("No actions left");
                         break;
 
                     case UnitState.Idle:

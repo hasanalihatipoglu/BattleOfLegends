@@ -651,8 +651,10 @@ public sealed class CombatManager
     {
         if (target.State == UnitState.Dead /*&& target.IsLight == false*/)
         {
-            ChangeMorale?.Invoke(this, new MoraleEventArgs(attacker.Faction, 1));
-            ChangeMorale?.Invoke(this, new MoraleEventArgs(target.Faction, -1));
+            // Leaders give +2/-2 morale when eliminated, regular units give +1/-1
+            int moraleChange = (target.Type == UnitType.Leader) ? 2 : 1;
+            ChangeMorale?.Invoke(this, new MoraleEventArgs(attacker.Faction, moraleChange));
+            ChangeMorale?.Invoke(this, new MoraleEventArgs(target.Faction, -moraleChange));
         }
     }
 

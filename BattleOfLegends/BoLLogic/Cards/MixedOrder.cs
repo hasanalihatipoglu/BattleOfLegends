@@ -21,6 +21,28 @@ public class MixedOrder(PlayerType faction) : Card
 
     public override bool IsValid()
     {
+        // Find the leader for this faction
+        var board = GameManager.Instance.CurrentBoard;
+        var player = board.Players.FirstOrDefault(p => p.Type == Faction);
+
+        if (player?.Leader == null)
+        {
+            MessageController.Instance.Show("No Leader!");
+            return false;
+        }
+
+        // Check if leader has already acted (moved, marched, or attacked) - cannot play order card
+        var leaderState = player.Leader.State;
+        if (leaderState == UnitState.Moved ||
+            leaderState == UnitState.Marched ||
+            leaderState == UnitState.Attacked ||
+            leaderState == UnitState.Passive ||
+            leaderState == UnitState.Advanced ||
+            leaderState == UnitState.PushedBack)
+        {
+            MessageController.Instance.Show("Leader has already acted - cannot give orders!");
+            return false;
+        }
 
         return true;
 
@@ -36,6 +58,14 @@ public class MixedOrder(PlayerType faction) : Card
 
         if(OrderManager.Instance.GiveOrder(Faction, OrderType.MixedOrder))
         {
+            // Set the leader's state to Ordered (leader has given an order)
+            var board = GameManager.Instance.CurrentBoard;
+            var player = board.Players.FirstOrDefault(p => p.Type == Faction);
+            if (player?.Leader != null)
+            {
+                player.Leader.State = UnitState.Ordered;
+            }
+
             GamePhase previousPhase = TurnManager.Instance.CurrentGamePhase;
             TurnManager.Instance.CurrentGamePhase = GamePhase.Order;
             TurnManager.Instance.ChangeCurrentGamePhase();

@@ -18,6 +18,7 @@ public enum UnitState
     Attacking,
     Defending,
     Ready,
-    Locked       // Locked from activation because another friendly unit has already moved
+    Locked,      // Locked from activation because another friendly unit has already moved
+    Ordered      // Leader has given an order (played an order card)
 }
 

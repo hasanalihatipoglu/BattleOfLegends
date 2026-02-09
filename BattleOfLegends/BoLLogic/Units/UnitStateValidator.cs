@@ -37,6 +37,7 @@ public static class UnitStateValidator
             (UnitState.Active, UnitState.Idle) => true,
             (UnitState.Active, UnitState.Passive) => true,
             (UnitState.Active, UnitState.Locked) => true,  // Locked when another unit acts during ordered activation
+            (UnitState.Active, UnitState.Ordered) => true,  // Leader returns to Ordered when deselected
 
             // From Moved
             (UnitState.Moved, UnitState.Attacked) => true,
@@ -102,6 +103,17 @@ public static class UnitStateValidator
             (UnitState.Locked, UnitState.Ready) => true,  // Restored when action is undone
             (UnitState.Locked, UnitState.Active) => true,  // Restored when action is undone (during ordered activation)
             (UnitState.Locked, UnitState.Defending) => true,  // Can be attacked by opponent
+
+            // From Ordered (leader has given an order)
+            (UnitState.Ordered, UnitState.Ready) => true,  // Leader orders itself
+            (UnitState.Ordered, UnitState.Active) => true,  // Leader is activated in Turn phase
+            (UnitState.Ordered, UnitState.Idle) => true,  // Reset at turn/round end
+            (UnitState.Ordered, UnitState.Defending) => true,  // Can be attacked
+            (UnitState.Ordered, UnitState.Passive) => true,  // No actions left (max action reached)
+
+            // To Ordered
+            (UnitState.Idle, UnitState.Ordered) => true,  // Leader plays an order card
+            (UnitState.Ready, UnitState.Ordered) => true,  // Leader removes self from order
 
             // Default - invalid transition
             _ => false
