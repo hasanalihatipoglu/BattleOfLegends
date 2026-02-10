@@ -51,6 +51,7 @@ public static class UnitStateValidator
             (UnitState.Marched, UnitState.Defending) => true,
 
             // From Attacked
+            (UnitState.Attacked, UnitState.Attacked) => true,  // Allow setting state to itself (combat restoration)
             (UnitState.Attacked, UnitState.Passive) => true,
             (UnitState.Attacked, UnitState.Advancing) => true,
             (UnitState.Attacked, UnitState.Retreating) => true,

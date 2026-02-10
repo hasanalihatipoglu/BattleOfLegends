@@ -267,8 +267,8 @@ public sealed class CombatManager
             CheckAdvance();
         }
 
-        // Update the combat action with final states after all state changes
-        combatAction.UpdateFinalStates(Attacker.State, Target.State);
+        // Update the combat action with final states and positions after all state changes (including retreats)
+        combatAction.UpdateFinalStates(Attacker, Target);
 
         // Lock all other friendly Idle/Ready units after NORMAL attack only (not counter or first attacks)
         if (type == AttackType.Normal)
@@ -585,8 +585,8 @@ public sealed class CombatManager
             CheckAdvance();
         }
 
-        // Update the combat action with final states after all state changes
-        combatAction.UpdateFinalStates(Attacker.State, Target.State);
+        // Update the combat action with final states and positions after all state changes (including retreats)
+        combatAction.UpdateFinalStates(Attacker, Target);
 
         // Lock all other friendly Idle/Ready units after NORMAL attack only (not counter or first attacks)
         if (type == AttackType.Normal)

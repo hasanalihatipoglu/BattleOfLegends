@@ -7,8 +7,10 @@ public class CombatAction : GameAction
 {
     public UnitType AttackerType { get; set; }
     public Position AttackerPosition { get; set; }
+    public Position AttackerPositionAfter { get; set; }  // Final position after combat (may have retreated)
     public UnitType DefenderType { get; set; }
     public Position DefenderPosition { get; set; }
+    public Position DefenderPositionAfter { get; set; }  // Final position after combat (may have retreated)
     public int AttackerHealthBefore { get; set; }
     public int DefenderHealthBefore { get; set; }
     public int AttackerHealthAfter { get; set; }
@@ -42,9 +44,11 @@ public class CombatAction : GameAction
         AttackerType = attacker.Type;
         AttackerFaction = attacker.Faction;
         AttackerPosition = attacker.Position;
+        AttackerPositionAfter = attacker.Position;  // Will be updated by UpdateFinalStates
         DefenderType = defender.Type;
         DefenderFaction = defender.Faction;
         DefenderPosition = defender.Position;
+        DefenderPositionAfter = defender.Position;  // Will be updated by UpdateFinalStates
         AttackerHealthBefore = attackerHealthBefore;
         DefenderHealthBefore = defenderHealthBefore;
         AttackerHealthAfter = attackerHealthAfter;
@@ -57,12 +61,14 @@ public class CombatAction : GameAction
     public CombatAction() : base() { }
 
     /// <summary>
-    /// Update the final states after combat is complete
+    /// Update the final states and positions after combat is complete (including any retreats)
     /// </summary>
-    public void UpdateFinalStates(UnitState attackerStateAfter, UnitState defenderStateAfter)
+    public void UpdateFinalStates(Unit attacker, Unit defender)
     {
-        AttackerStateAfter = attackerStateAfter;
-        DefenderStateAfter = defenderStateAfter;
+        AttackerStateAfter = attacker.State;
+        DefenderStateAfter = defender.State;
+        AttackerPositionAfter = new Position(attacker.Position.Row, attacker.Position.Column);
+        DefenderPositionAfter = new Position(defender.Position.Row, defender.Position.Column);
     }
 
     public override string GetNotation()
@@ -78,7 +84,7 @@ public class CombatAction : GameAction
 
     public override bool Execute(Board board)
     {
-        // Find attacker and defender
+        // Find attacker and defender at original combat positions
         var attackerTile = board.Tiles.FirstOrDefault(t =>
             t.Position.Row == AttackerPosition.Row && t.Position.Column == AttackerPosition.Column);
         var defenderTile = board.Tiles.FirstOrDefault(t =>
@@ -87,16 +93,61 @@ public class CombatAction : GameAction
         if (attackerTile?.Unit == null || defenderTile?.Unit == null)
             return false;
 
+        var attacker = attackerTile.Unit;
+        var defender = defenderTile.Unit;
+
         // Apply the damage
-        attackerTile.Unit.Health.SetHealth(AttackerHealthAfter);
-        defenderTile.Unit.Health.SetHealth(DefenderHealthAfter);
+        attacker.Health.SetHealth(AttackerHealthAfter);
+        defender.Health.SetHealth(DefenderHealthAfter);
 
-        // Restore the states after combat
-        attackerTile.Unit.State = AttackerStateAfter;
-        defenderTile.Unit.State = DefenderStateAfter;
+        // Move attacker to final position if it retreated
+        if (AttackerPositionAfter.Row != AttackerPosition.Row || AttackerPositionAfter.Column != AttackerPosition.Column)
+        {
+            var attackerFinalTile = board.Tiles.FirstOrDefault(t =>
+                t.Position.Row == AttackerPositionAfter.Row && t.Position.Column == AttackerPositionAfter.Column);
 
-        System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Set {attackerTile.Unit.Type} state to {AttackerStateAfter}");
-        System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Set {defenderTile.Unit.Type} state to {DefenderStateAfter}");
+            if (attackerFinalTile != null)
+            {
+                // Clear original tile
+                attackerTile.Unit = null;
+                attackerTile.Occupied = false;
+
+                // Place unit at final position
+                attackerFinalTile.Unit = attacker;
+                attackerFinalTile.Occupied = true;
+                attacker.Tile = attackerFinalTile;
+                attacker.Position = attackerFinalTile.Position;
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Moved {attacker.Type} from ({AttackerPosition.Row},{AttackerPosition.Column}) to ({AttackerPositionAfter.Row},{AttackerPositionAfter.Column})");
+            }
+        }
+
+        // Move defender to final position if it retreated
+        if (DefenderPositionAfter.Row != DefenderPosition.Row || DefenderPositionAfter.Column != DefenderPosition.Column)
+        {
+            var defenderFinalTile = board.Tiles.FirstOrDefault(t =>
+                t.Position.Row == DefenderPositionAfter.Row && t.Position.Column == DefenderPositionAfter.Column);
+
+            if (defenderFinalTile != null)
+            {
+                // Clear original tile
+                defenderTile.Unit = null;
+                defenderTile.Occupied = false;
+
+                // Place unit at final position
+                defenderFinalTile.Unit = defender;
+                defenderFinalTile.Occupied = true;
+                defender.Tile = defenderFinalTile;
+                defender.Position = defenderFinalTile.Position;
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Moved {defender.Type} from ({DefenderPosition.Row},{DefenderPosition.Column}) to ({DefenderPositionAfter.Row},{DefenderPositionAfter.Column})");
+            }
+        }
+
+        // Restore the states after combat and movement
+        attacker.State = AttackerStateAfter;
+        defender.State = DefenderStateAfter;
+
+        System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Set {attacker.Type} state to {AttackerStateAfter}");
+        System.Diagnostics.Debug.WriteLine($"[CombatAction.Execute] Set {defender.Type} state to {DefenderStateAfter}");
 
         // Lock the units that were recorded as locked by this attack (during redo/load)
         if (LockedUnits.Count > 0)
@@ -123,86 +174,106 @@ public class CombatAction : GameAction
 
     public override bool Undo(Board board)
     {
-        // Find tiles
-        var attackerTile = board.Tiles.FirstOrDefault(t =>
+        // Find original tiles (where combat happened)
+        var attackerOriginalTile = board.Tiles.FirstOrDefault(t =>
             t.Position.Row == AttackerPosition.Row && t.Position.Column == AttackerPosition.Column);
-        var defenderTile = board.Tiles.FirstOrDefault(t =>
+        var defenderOriginalTile = board.Tiles.FirstOrDefault(t =>
             t.Position.Row == DefenderPosition.Row && t.Position.Column == DefenderPosition.Column);
 
-        if (attackerTile == null || defenderTile == null)
+        if (attackerOriginalTile == null || defenderOriginalTile == null)
         {
-            System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Failed: Could not find tiles");
+            System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Failed: Could not find original tiles");
             return false;
         }
 
-        // Restore attacker
-        if (attackerTile.Unit != null)
+        // Find attacker at its FINAL position (after any retreat)
+        var attackerFinalTile = board.Tiles.FirstOrDefault(t =>
+            t.Position.Row == AttackerPositionAfter.Row && t.Position.Column == AttackerPositionAfter.Column);
+
+        Unit attacker = null;
+        if (attackerFinalTile?.Unit != null)
         {
-            // Attacker is still alive, just restore health and state
-            attackerTile.Unit.Health.SetHealth(AttackerHealthBefore);
-            attackerTile.Unit.State = AttackerStateBefore;
-            System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Restored alive attacker health to {AttackerHealthBefore}");
+            // Attacker is still alive at final position
+            attacker = attackerFinalTile.Unit;
         }
         else
         {
-            // Attacker was eliminated, resurrect it
-            // Use _attacker if available (runtime), otherwise find by Faction+Type (after deserialization)
-            var attackerUnit = _attacker ?? board.Units.FirstOrDefault(u => u.Faction == AttackerFaction && u.Type == AttackerType);
-            if (attackerUnit != null)
-            {
-                // Step 1: Restore health first (so unit is no longer "dead")
-                attackerUnit.Health.SetHealth(AttackerHealthBefore);
-
-                // Step 2: Place unit back on the tile BEFORE changing state
-                // This ensures the unit has a valid tile reference
-                attackerUnit.Tile = attackerTile;
-                attackerUnit.Position = attackerTile.Position;
-                attackerTile.Unit = attackerUnit;
-                attackerTile.Occupied = true;
-
-                // Step 3: Change state last (after unit is properly positioned)
-                attackerUnit.State = AttackerStateBefore;
-                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Resurrected attacker with health {AttackerHealthBefore}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Could not find attacker unit for resurrection");
-            }
+            // Attacker was eliminated, find by Faction+Type
+            attacker = _attacker ?? board.Units.FirstOrDefault(u => u.Faction == AttackerFaction && u.Type == AttackerType);
         }
 
-        // Restore defender
-        if (defenderTile.Unit != null)
+        if (attacker != null)
         {
-            // Defender is still alive, just restore health and state
-            defenderTile.Unit.Health.SetHealth(DefenderHealthBefore);
-            defenderTile.Unit.State = DefenderStateBefore;
-            System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Restored alive defender health to {DefenderHealthBefore}");
+            // Restore health first
+            attacker.Health.SetHealth(AttackerHealthBefore);
+
+            // Move attacker back to original position if it had retreated
+            if (attackerFinalTile != null && attackerFinalTile != attackerOriginalTile)
+            {
+                // Clear final tile
+                attackerFinalTile.Unit = null;
+                attackerFinalTile.Occupied = false;
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Moving {attacker.Type} from ({AttackerPositionAfter.Row},{AttackerPositionAfter.Column}) back to ({AttackerPosition.Row},{AttackerPosition.Column})");
+            }
+
+            // Place unit at original position
+            attackerOriginalTile.Unit = attacker;
+            attackerOriginalTile.Occupied = true;
+            attacker.Tile = attackerOriginalTile;
+            attacker.Position = attackerOriginalTile.Position;
+
+            // Restore state last
+            attacker.State = AttackerStateBefore;
+            System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Restored attacker health to {AttackerHealthBefore} and state to {AttackerStateBefore}");
         }
         else
         {
-            // Defender was eliminated, resurrect it
-            // Use _defender if available (runtime), otherwise find by Faction+Type (after deserialization)
-            var defenderUnit = _defender ?? board.Units.FirstOrDefault(u => u.Faction == DefenderFaction && u.Type == DefenderType);
-            if (defenderUnit != null)
-            {
-                // Step 1: Restore health first (so unit is no longer "dead")
-                defenderUnit.Health.SetHealth(DefenderHealthBefore);
+            System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Could not find attacker unit");
+        }
 
-                // Step 2: Place unit back on the tile BEFORE changing state
-                // This ensures the unit has a valid tile reference
-                defenderUnit.Tile = defenderTile;
-                defenderUnit.Position = defenderTile.Position;
-                defenderTile.Unit = defenderUnit;
-                defenderTile.Occupied = true;
+        // Find defender at its FINAL position (after any retreat)
+        var defenderFinalTile = board.Tiles.FirstOrDefault(t =>
+            t.Position.Row == DefenderPositionAfter.Row && t.Position.Column == DefenderPositionAfter.Column);
 
-                // Step 3: Change state last (after unit is properly positioned)
-                defenderUnit.State = DefenderStateBefore;
-                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Resurrected defender with health {DefenderHealthBefore}");
-            }
-            else
+        Unit defender = null;
+        if (defenderFinalTile?.Unit != null)
+        {
+            // Defender is still alive at final position
+            defender = defenderFinalTile.Unit;
+        }
+        else
+        {
+            // Defender was eliminated, find by Faction+Type
+            defender = _defender ?? board.Units.FirstOrDefault(u => u.Faction == DefenderFaction && u.Type == DefenderType);
+        }
+
+        if (defender != null)
+        {
+            // Restore health first
+            defender.Health.SetHealth(DefenderHealthBefore);
+
+            // Move defender back to original position if it had retreated
+            if (defenderFinalTile != null && defenderFinalTile != defenderOriginalTile)
             {
-                System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Could not find defender unit for resurrection");
+                // Clear final tile
+                defenderFinalTile.Unit = null;
+                defenderFinalTile.Occupied = false;
+                System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Moving {defender.Type} from ({DefenderPositionAfter.Row},{DefenderPositionAfter.Column}) back to ({DefenderPosition.Row},{DefenderPosition.Column})");
             }
+
+            // Place unit at original position
+            defenderOriginalTile.Unit = defender;
+            defenderOriginalTile.Occupied = true;
+            defender.Tile = defenderOriginalTile;
+            defender.Position = defenderOriginalTile.Position;
+
+            // Restore state last
+            defender.State = DefenderStateBefore;
+            System.Diagnostics.Debug.WriteLine($"[CombatAction.Undo] Restored defender health to {DefenderHealthBefore} and state to {DefenderStateBefore}");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine("[CombatAction.Undo] Warning: Could not find defender unit");
         }
 
         // Unlock units that were locked by this attack and restore their previous state

@@ -347,28 +347,43 @@ public sealed class PathFinder
                         maxCostTile = CurrentFrontier.Tiles[0];
                     }
 
-                    int numberOfUnresolvedRetreatSpaces = CombatManager.Instance.NumberOfRetreatSpaces - maxCostTile.Cost;
+                    // Calculate unresolved retreat spaces from enemy blockage
+                    int unresolvedFromBlockage = CombatManager.Instance.NumberOfRetreatSpaces - maxCostTile.Cost;
+                    int unresolvedFromNoSupport = 0;
 
-                    // Check if maxCostTile itself is occupied by a friendly unit (can't end movement on occupied tile)
-                    // This provides support regardless of whether the unit is light or heavy
-                    if (maxCostTile.Unit != null && maxCostTile.Unit.Faction == unit.Faction)
+                    // Only check for support if unit retreated the full distance (no enemy blockage)
+                    if (unresolvedFromBlockage == 0)
                     {
-                        numberOfUnresolvedRetreatSpaces = 0;
-                    }
-                    else
-                    {
-                        // Check adjacent tile in retreat direction for support
-                        var adjacents = FindAdjacents(maxCostTile, PathType.Retreat);
-                        if (adjacents.Count > 0 && adjacents.First()?.Unit?.Faction == unit.Faction)
+                        bool hasSupport = false;
+
+                        // Check if destination is occupied by friendly unit (provides support)
+                        if (maxCostTile.Unit != null && maxCostTile.Unit.Faction == unit.Faction)
                         {
-                            // Only support if the friendly unit is NOT light (heavy units block retreat)
-                            // Light units allow retreating units to pass through
-                            if (adjacents.First()?.Unit?.IsLight == false)
+                            hasSupport = true;
+                        }
+                        else
+                        {
+                            // Check adjacent tile in retreat direction for support
+                            var adjacents = FindAdjacents(maxCostTile, PathType.Retreat);
+                            if (adjacents.Count > 0 && adjacents.First()?.Unit?.Faction == unit.Faction)
                             {
-                                numberOfUnresolvedRetreatSpaces = 0;
+                                // Only heavy units provide support (light units don't block retreat)
+                                if (adjacents.First()?.Unit?.IsLight == false)
+                                {
+                                    hasSupport = true;
+                                }
                             }
                         }
+
+                        // If no support, add 1 unresolved retreat space
+                        if (!hasSupport)
+                        {
+                            unresolvedFromNoSupport = 1;
+                        }
                     }
+                    // else: retreat was blocked by enemy, unresolvedFromBlockage damage always applies
+
+                    int numberOfUnresolvedRetreatSpaces = unresolvedFromBlockage + unresolvedFromNoSupport;
 
                     AddToSpaces(maxCostTile, origin);
                     unit.Health.Damage(numberOfUnresolvedRetreatSpaces);
