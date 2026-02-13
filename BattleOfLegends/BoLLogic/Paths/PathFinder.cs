@@ -96,7 +96,7 @@ public sealed class PathFinder
                    )
                     adjacentTile.AttackParent = currentTile;
 
-                if (IsPassable(adjacentTile, type))
+                if (IsPassable(adjacentTile, unit, type))
                 {
                     openSet.Enqueue(adjacentTile);
                 }
@@ -237,7 +237,7 @@ public sealed class PathFinder
     }
 
 
-    bool IsPassable(Tile tile, PathType type)
+    bool IsPassable(Tile tile, Unit unit, PathType type)
     {
         bool valid = false;
 
@@ -249,9 +249,15 @@ public sealed class PathFinder
             case PathType.Pursue:
             case PathType.Withdraw:
             case PathType.HitAndRun:
-                if (tile.CanBePassed)
+                // Can pass if tile is not occupied
+                if (tile.Unit == null)
                 {
-                    valid = true;
+                    valid = tile.Passable;
+                }
+                // Can pass through friendly light units only (not enemy light units)
+                else if (tile.Unit.IsLight && tile.Unit.Faction == unit.Faction)
+                {
+                    valid = tile.Passable;
                 }
                 break;
 
@@ -347,12 +353,11 @@ public sealed class PathFinder
                         maxCostTile = CurrentFrontier.Tiles[0];
                     }
 
-                    // Calculate unresolved retreat spaces from enemy blockage
-                    int unresolvedFromBlockage = CombatManager.Instance.NumberOfRetreatSpaces - maxCostTile.Cost;
-                    int unresolvedFromNoSupport = 0;
+                    // Calculate unresolved retreat spaces
+                    int numberOfUnresolvedRetreatSpaces = CombatManager.Instance.NumberOfRetreatSpaces - maxCostTile.Cost;
 
-                    // Only check for support if unit retreated the full distance (no enemy blockage)
-                    if (unresolvedFromBlockage == 0)
+                    // Check for friendly support - only applies if retreat was blocked (unresolved > 0)
+                    if (numberOfUnresolvedRetreatSpaces > 0)
                     {
                         bool hasSupport = false;
 
@@ -375,18 +380,23 @@ public sealed class PathFinder
                             }
                         }
 
-                        // If no support, add 1 unresolved retreat space
-                        if (!hasSupport)
+                        // If there's friendly support, clear the unresolved retreat damage
+                        if (hasSupport)
                         {
-                            unresolvedFromNoSupport = 1;
+                            numberOfUnresolvedRetreatSpaces = 0;
                         }
                     }
-                    // else: retreat was blocked by enemy, unresolvedFromBlockage damage always applies
-
-                    int numberOfUnresolvedRetreatSpaces = unresolvedFromBlockage + unresolvedFromNoSupport;
+                    // else: retreat succeeded (reached full distance), no additional damage
 
                     AddToSpaces(maxCostTile, origin);
                     unit.Health.Damage(numberOfUnresolvedRetreatSpaces);
+                }
+                else
+                {
+                    // No valid retreat path (all paths blocked by enemies) - all retreat spaces convert to damage
+                    MessageController.Instance.Show($"{unit} has no valid retreat path - taking {CombatManager.Instance.NumberOfRetreatSpaces} damage");
+                    unit.Health.Damage(CombatManager.Instance.NumberOfRetreatSpaces);
+                    unit.State = unit.Faction == TurnManager.Instance.CurrentPlayer ? UnitState.PushedBack : UnitState.Retreated;
                 }
                 break;
 

@@ -31,6 +31,13 @@ public class MixedOrder(PlayerType faction) : Card
             return false;
         }
 
+        // Check if max action limit reached - cannot play order cards
+        if (player.Action.ActionValue >= player.Action.MaxAction)
+        {
+            MessageController.Instance.Show($"Cannot play order card: Max action limit ({player.Action.MaxAction}) reached!");
+            return false;
+        }
+
         // Check if leader has already acted (moved, marched, or attacked) - cannot play order card
         var leaderState = player.Leader.State;
         if (leaderState == UnitState.Moved ||
